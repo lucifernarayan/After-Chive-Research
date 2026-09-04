@@ -36,6 +36,7 @@ class ExperimentRequest(BaseModel):
     layer_idx: Optional[int] = Field(default=None, description="Target transformer layer index (0 to 25)")
     position_idx: Optional[int] = Field(default=None, description="Target token position index")
     target_position_idx: Optional[int] = Field(default=None, description="Target prompt position index for patching")
+    candidate_tokens: Optional[List[str]] = Field(default=None, description="Candidate token strings to measure log-probabilities for")
     rationale: str = Field(..., description="Agent #2 reasoning for why this experiment discriminates the hypothesis")
 
 
@@ -57,6 +58,10 @@ class ExperimentResult(BaseModel):
     activation_l2_norm: Optional[float] = Field(default=None, description="L2 norm of target activation tensor")
     patch_delta_norm: Optional[float] = Field(default=None, description="L2 norm of activation delta")
     observed_behavioral_delta: float = Field(default=0.0, description="Quantitative behavioral shift score")
+    candidate_logprobs: Optional[Dict[str, float]] = Field(
+        default=None, 
+        description="Next-token log-probabilities for candidate answer tokens (e.g. {'Rome': -0.12, 'Paris': -8.45})"
+    )
     
     evidence_type: Literal["observational", "intervention", "mechanism_discriminating"] = Field(
         default="observational",

@@ -76,7 +76,7 @@ class InvestigationSandbox:
     # -------------------------------------------------------------------------
     # EXPLICIT TOOL INTERFACE 1: run_target
     # -------------------------------------------------------------------------
-    def run_target(self, prompt: str, hypothesis_id: int = 1, exp_id: Optional[str] = None) -> ExperimentResult:
+    def run_target(self, prompt: str, hypothesis_id: int = 1, exp_id: Optional[str] = None, candidate_tokens: Optional[List[str]] = None) -> ExperimentResult:
         """Run Gemma target model on prompt without activation interventions (Observational)."""
         self._check_budget()
         self.budget.experiments_used += 1
@@ -85,7 +85,7 @@ class InvestigationSandbox:
         exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         
-        output_text = self.target.run_inference(prompt)
+        output_text, cand_logprobs = self.target.run_inference(prompt, candidate_tokens=candidate_tokens)
 
         result = ExperimentResult(
             investigation_id=self.investigation_id,
@@ -95,6 +95,7 @@ class InvestigationSandbox:
             prompt=prompt,
             baseline_output=output_text,
             intervened_output=None,
+            candidate_logprobs=cand_logprobs,
             evidence_type="observational",
             evidence_strength="weak",
             timestamp=timestamp
@@ -113,7 +114,8 @@ class InvestigationSandbox:
         layer_idx: int, 
         position_idx: int, 
         hypothesis_id: int = 1,
-        exp_id: Optional[str] = None
+        exp_id: Optional[str] = None,
+        candidate_tokens: Optional[List[str]] = None
     ) -> ExperimentResult:
         """Capture residual-stream activation vector at specified layer/position (Observational)."""
         self._check_budget()
@@ -123,7 +125,7 @@ class InvestigationSandbox:
         exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        act_tensor, output_text = self.target.capture_activation(prompt, layer_idx, position_idx)
+        act_tensor, output_text, cand_logprobs = self.target.capture_activation(prompt, layer_idx, position_idx, candidate_tokens=candidate_tokens)
         act_l2 = torch_l2_norm(act_tensor)
 
         result = ExperimentResult(
@@ -137,6 +139,7 @@ class InvestigationSandbox:
             baseline_output=output_text,
             activation_shape=list(act_tensor.shape),
             activation_l2_norm=act_l2,
+            candidate_logprobs=cand_logprobs,
             evidence_type="observational",
             evidence_strength="weak",
             timestamp=timestamp
@@ -157,7 +160,8 @@ class InvestigationSandbox:
         source_pos: int, 
         target_pos: int,
         hypothesis_id: int = 1,
-        exp_id: Optional[str] = None
+        exp_id: Optional[str] = None,
+        candidate_tokens: Optional[List[str]] = None
     ) -> ExperimentResult:
         """Patch residual activation from source_prompt into target_prompt at layer_idx/position_idx (Intervention)."""
         self._check_budget()
@@ -168,12 +172,13 @@ class InvestigationSandbox:
         exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        base_out, patch_out, delta_norm, source_tensor = self.target.patch_activation(
+        base_out, patch_out, delta_norm, source_tensor, cand_logprobs = self.target.patch_activation(
             source_prompt=source_prompt,
             target_prompt=target_prompt,
             layer_idx=layer_idx,
             source_pos=source_pos,
-            target_pos=target_pos
+            target_pos=target_pos,
+            candidate_tokens=candidate_tokens
         )
 
         act_l2 = torch_l2_norm(source_tensor)
@@ -194,6 +199,7 @@ class InvestigationSandbox:
             activation_l2_norm=act_l2,
             patch_delta_norm=delta_norm,
             observed_behavioral_delta=behavioral_delta,
+            candidate_logprobs=cand_logprobs,
             evidence_type="intervention",
             evidence_strength="moderate" if behavioral_delta > 0 else "weak",
             timestamp=timestamp
@@ -212,7 +218,8 @@ class InvestigationSandbox:
         layer_idx: int, 
         position_idx: int,
         hypothesis_id: int = 1,
-        exp_id: Optional[str] = None
+        exp_id: Optional[str] = None,
+        candidate_tokens: Optional[List[str]] = None
     ) -> ExperimentResult:
         """Zero-ablate residual-stream activation at layer_idx/position_idx (Intervention)."""
         self._check_budget()
@@ -223,7 +230,9 @@ class InvestigationSandbox:
         exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        base_out, ablated_out, delta_norm = self.target.ablate_activation(prompt, layer_idx, position_idx)
+        base_out, ablated_out, delta_norm, cand_logprobs = self.target.ablate_activation(
+            prompt, layer_idx, position_idx, candidate_tokens=candidate_tokens
+        )
         behavioral_delta = calculate_string_delta(base_out, ablated_out)
 
         result = ExperimentResult(
@@ -238,6 +247,7 @@ class InvestigationSandbox:
             intervened_output=ablated_out,
             patch_delta_norm=delta_norm,
             observed_behavioral_delta=behavioral_delta,
+            candidate_logprobs=cand_logprobs,
             evidence_type="intervention",
             evidence_strength="moderate" if behavioral_delta > 0 else "weak",
             timestamp=timestamp

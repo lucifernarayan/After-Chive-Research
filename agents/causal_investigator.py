@@ -131,9 +131,9 @@ class CausalInvestigatorAgent:
                 print(f"    Rationale: {req.rationale}")
 
                 if req.experiment_type == "run_target":
-                    res = sandbox.run_target(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id)
+                    res = sandbox.run_target(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
                 elif req.experiment_type == "capture":
-                    res = sandbox.capture_activation(req.prompt, req.layer_idx or 12, req.position_idx or 3, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id)
+                    res = sandbox.capture_activation(req.prompt, req.layer_idx or 12, req.position_idx or 3, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
                 elif req.experiment_type == "patch":
                     src = req.source_prompt or case.prompt
                     res = sandbox.patch_activation(
@@ -143,7 +143,8 @@ class CausalInvestigatorAgent:
                         source_pos=req.position_idx or 3,
                         target_pos=req.target_position_idx or 3,
                         hypothesis_id=req.hypothesis_id,
-                        exp_id=req.experiment_id
+                        exp_id=req.experiment_id,
+                        candidate_tokens=req.candidate_tokens
                     )
                 elif req.experiment_type == "ablate":
                     res = sandbox.ablate_activation(
@@ -151,10 +152,11 @@ class CausalInvestigatorAgent:
                         layer_idx=req.layer_idx or 12,
                         position_idx=req.position_idx or 3,
                         hypothesis_id=req.hypothesis_id,
-                        exp_id=req.experiment_id
+                        exp_id=req.experiment_id,
+                        candidate_tokens=req.candidate_tokens
                     )
                 else:
-                    res = sandbox.run_target(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id)
+                    res = sandbox.run_target(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
 
                 # Update hypothesis evidence based on intervention result
                 self._update_evidence(evidence_map[req.hypothesis_id], res)
@@ -322,6 +324,7 @@ class CausalInvestigatorAgent:
             layer_idx=12,
             position_idx=3,
             target_position_idx=3,
+            candidate_tokens=["Rome", "Paris"],
             rationale="Test whether residual stream activation patching at Layer 12 transfers source factual representation."
         )
         req2 = ExperimentRequest(
@@ -331,6 +334,7 @@ class CausalInvestigatorAgent:
             prompt=case.prompt,
             layer_idx=12,
             position_idx=3,
+            candidate_tokens=["Rome", "Paris"],
             rationale="Test whether zero-ablating residual activation at Layer 12 alters baseline generation."
         )
         req3 = ExperimentRequest(
@@ -338,6 +342,7 @@ class CausalInvestigatorAgent:
             hypothesis_id=3,
             experiment_type="run_target",
             prompt=case.prompt,
+            candidate_tokens=["Rome", "Paris"],
             rationale="Establish un-intervened baseline behavior for target model on failure case."
         )
         return [req1, req2, req3]

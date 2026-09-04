@@ -50,10 +50,36 @@ class GemmaTargetInterface:
             self.model = self.model.to("cpu")
         self.model.eval()
 
-    def run_inference(self, prompt: str, max_new_tokens: int = 10) -> str:
-        """Run target model inference deterministically (temperature=0)."""
+    def _compute_candidate_logprobs(self, prompt: str, candidate_tokens: List[str]) -> Dict[str, float]:
+        """Helper method to compute next-token log-probabilities for candidate token strings."""
+        if not candidate_tokens:
+            return {}
         if self.mock:
-            return prompt + " [Mock Gemma Response]"
+            # Deterministic synthetic candidate logprobs for mock mode
+            mock_probs = {}
+            for idx, cand in enumerate(candidate_tokens):
+                mock_probs[cand] = round(-0.15 - (idx * 3.5), 4)
+            return mock_probs
+
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            logits = outputs.logits[0, -1, :]
+            log_probs = F.log_softmax(logits, dim=-1)
+
+        result = {}
+        for cand in candidate_tokens:
+            cand_ids = self.tokenizer.encode(cand, add_special_tokens=False)
+            if cand_ids:
+                cand_id = cand_ids[0]
+                result[cand] = float(log_probs[cand_id].item())
+        return result
+
+    def run_inference(self, prompt: str, max_new_tokens: int = 10, candidate_tokens: Optional[List[str]] = None) -> Tuple[str, Optional[Dict[str, float]]]:
+        """Run target model inference deterministically (temperature=0) and compute candidate logprobs if requested."""
+        logprobs = self._compute_candidate_logprobs(prompt, candidate_tokens) if candidate_tokens else None
+        if self.mock:
+            return prompt + " [Mock Gemma Response]", logprobs
 
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         with torch.no_grad():
@@ -63,13 +89,14 @@ class GemmaTargetInterface:
                 do_sample=False
             )
         text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        return text
+        return text, logprobs
 
-    def capture_activation(self, prompt: str, layer_idx: int, position_idx: int) -> Tuple[torch.Tensor, str]:
+    def capture_activation(self, prompt: str, layer_idx: int, position_idx: int, candidate_tokens: Optional[List[str]] = None) -> Tuple[torch.Tensor, str, Optional[Dict[str, float]]]:
         """Capture residual-stream activation tensor output[0][:, pos:pos+1, :] at (layer_idx, position_idx)."""
+        logprobs = self._compute_candidate_logprobs(prompt, candidate_tokens) if candidate_tokens else None
         if self.mock:
             dummy_tensor = torch.randn(1, 1, 2304)
-            return dummy_tensor, prompt + " [Mock Gemma Response]"
+            return dummy_tensor, prompt + " [Mock Gemma Response]", logprobs
 
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         seq_len = inputs["input_ids"].shape[1]
@@ -91,7 +118,7 @@ class GemmaTargetInterface:
         handle.remove()
 
         text = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
-        return captured[0], text
+        return captured[0], text, logprobs
 
     def patch_activation(
         self, 
@@ -99,8 +126,9 @@ class GemmaTargetInterface:
         target_prompt: str, 
         layer_idx: int, 
         source_pos: int, 
-        target_pos: int
-    ) -> Tuple[str, str, float, torch.Tensor]:
+        target_pos: int,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> Tuple[str, str, float, torch.Tensor, Optional[Dict[str, float]]]:
         """
         Capture residual activation from source_prompt at source_pos,
         and replace residual activation in target_prompt at target_pos during forward pass.
@@ -108,10 +136,11 @@ class GemmaTargetInterface:
         if self.mock:
             base_out = target_prompt + " Rome."
             patch_out = target_prompt + " Paris."
-            return base_out, patch_out, 35.5, torch.randn(1, 1, 2304)
+            logprobs = self._compute_candidate_logprobs(target_prompt, candidate_tokens) if candidate_tokens else None
+            return base_out, patch_out, 35.5, torch.randn(1, 1, 2304), logprobs
 
-        source_tensor, _ = self.capture_activation(source_prompt, layer_idx, source_pos)
-        target_baseline = self.run_inference(target_prompt)
+        source_tensor, _, _ = self.capture_activation(source_prompt, layer_idx, source_pos)
+        target_baseline, _ = self.run_inference(target_prompt)
 
         inputs = self.tokenizer(target_prompt, return_tensors="pt").to(self.device)
         seq_len = inputs["input_ids"].shape[1]
@@ -136,29 +165,43 @@ class GemmaTargetInterface:
         handle = target_layer.register_forward_hook(patch_hook)
         with torch.no_grad():
             gen_ids = self.model.generate(**inputs, max_new_tokens=10, do_sample=False)
+            
+            # If candidate tokens provided, run single forward pass under intervention to compute logprobs
+            logprobs = None
+            if candidate_tokens:
+                outputs = self.model(**inputs)
+                logits = outputs.logits[0, -1, :]
+                l_probs = F.log_softmax(logits, dim=-1)
+                logprobs = {}
+                for cand in candidate_tokens:
+                    cand_ids = self.tokenizer.encode(cand, add_special_tokens=False)
+                    if cand_ids:
+                        logprobs[cand] = float(l_probs[cand_ids[0]].item())
         handle.remove()
 
         patched_out = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
         delta_norm = delta_norms[0] if delta_norms else 0.0
 
-        return target_baseline, patched_out, delta_norm, source_tensor
+        return target_baseline, patched_out, delta_norm, source_tensor, logprobs
 
     def ablate_activation(
         self, 
         prompt: str, 
         layer_idx: int, 
-        position_idx: int
-    ) -> Tuple[str, str, float]:
+        position_idx: int,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> Tuple[str, str, float, Optional[Dict[str, float]]]:
         """
         Zero-ablate residual stream activation at (layer_idx, position_idx) during forward pass.
-        Returns (baseline_output, ablated_output, ablate_delta_norm).
+        Returns (baseline_output, ablated_output, ablate_delta_norm, candidate_logprobs).
         """
         if self.mock:
             base_out = prompt + " Rome."
             ablated_out = prompt + " [Ablated Response]"
-            return base_out, ablated_out, 48.2
+            logprobs = self._compute_candidate_logprobs(prompt, candidate_tokens) if candidate_tokens else None
+            return base_out, ablated_out, 48.2, logprobs
 
-        baseline_out = self.run_inference(prompt)
+        baseline_out, _ = self.run_inference(prompt)
 
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         seq_len = inputs["input_ids"].shape[1]
@@ -183,9 +226,22 @@ class GemmaTargetInterface:
         handle = target_layer.register_forward_hook(ablate_hook)
         with torch.no_grad():
             gen_ids = self.model.generate(**inputs, max_new_tokens=10, do_sample=False)
+            
+            # If candidate tokens provided, run single forward pass under ablation intervention to compute logprobs
+            logprobs = None
+            if candidate_tokens:
+                outputs = self.model(**inputs)
+                logits = outputs.logits[0, -1, :]
+                l_probs = F.log_softmax(logits, dim=-1)
+                logprobs = {}
+                for cand in candidate_tokens:
+                    cand_ids = self.tokenizer.encode(cand, add_special_tokens=False)
+                    if cand_ids:
+                        logprobs[cand] = float(l_probs[cand_ids[0]].item())
         handle.remove()
 
         ablated_out = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
         delta_norm = delta_norms[0] if delta_norms else 0.0
 
-        return baseline_out, ablated_out, delta_norm
+        return baseline_out, ablated_out, delta_norm, logprobs
+
