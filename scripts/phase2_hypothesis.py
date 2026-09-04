@@ -1,6 +1,6 @@
 """
 Phase 2 Execution Script: Transcript-Only Gemini Hypothesis Agent (Agent #1).
-Default Model: gemini-3.8-flash
+Default Model: gemini-3.8-flash (Fixed model with bounded exponential backoff retries)
 
 Executes hypothesis generation across synthetic validation cases, evaluates schema compliance,
 falsifiability, distinctness, and saves results JSON.
@@ -36,7 +36,19 @@ def run_phase2(model_name="gemini-3.8-flash", mock=False):
     agent = HypothesisGeneratorAgent(model_name=model_name, mock=mock)
     runner = HypothesisExperimentRunner(agent=agent)
 
-    results = runner.run_validation_suite()
+    try:
+        results = runner.run_validation_suite()
+    except Exception as e:
+        print(f"\n  [FATAL ERROR] Phase 2 Execution failed: {e}")
+        print("\n" + "=" * 80)
+        print("  PHASE 2 PASS/FAIL EVALUATION SUMMARY")
+        print("=" * 80)
+        print(f"  1. Gemini Client / SDK Init      : [{'PASS' if agent.client or mock else 'FAIL'}]")
+        print(f"  2. Fixed Model Query Status      : [FAIL] ({e})")
+        print("-" * 80)
+        print(f"  PHASE 2 OVERALL STATUS           : [FAIL]")
+        print("=" * 80)
+        return False
 
     # Save results
     os.makedirs("results", exist_ok=True)

@@ -1,11 +1,12 @@
 """
 Agent #1: Transcript-Only Gemini Hypothesis Generator.
 Uses Google GenAI SDK to produce structured, falsifiable causal hypotheses from failure transcripts.
-Default Model: gemini-3.8-flash
+Target Model: gemini-3.8-flash (Fixed model with bounded exponential backoff retries)
 """
 
 import os
 import sys
+import time
 import datetime
 from typing import Optional, Dict, Any
 from schemas.hypotheses import FailureCase, Hypothesis, HypothesisSet, Agent1GenerationRecord
@@ -20,16 +21,19 @@ class HypothesisGeneratorAgent:
     - NO access to target model internal activations, layer info, or intervention tools.
     - NO access to hidden test prompts or hidden outcomes.
     - ZERO logging of API credentials.
+    - Model selection is fixed to target model (gemini-3.8-flash) with bounded retries; NO automatic fallback to alternative models.
     """
 
     def __init__(
         self, 
         model_name: str = "gemini-3.8-flash", 
-        fallback_model: str = "gemini-3.8-flash",
+        max_retries: int = 5,
+        base_delay: float = 2.0,
         mock: bool = False
     ):
         self.model_name = model_name
-        self.fallback_model = fallback_model
+        self.max_retries = max_retries
+        self.base_delay = base_delay
         self.mock = mock
         self.client = None
         self.sdk_version = "unknown"
@@ -92,14 +96,19 @@ class HypothesisGeneratorAgent:
             hypothesis_set=hyp_set,
             generation_config={
                 "temperature": 0.2,
-                "system_instruction_length": len(self.get_system_prompt())
+                "system_instruction_length": len(self.get_system_prompt()),
+                "max_retries": self.max_retries
             }
         )
 
         return record
 
     def _call_gemini_api(self, case: FailureCase) -> tuple[HypothesisSet, str]:
-        """Execute structured prompt request via Google GenAI SDK."""
+        """
+        Execute structured prompt request via Google GenAI SDK.
+        Retries transient errors (HTTP 503 UNAVAILABLE, 429 Rate Limit) using bounded exponential backoff.
+        Does NOT switch models automatically.
+        """
         from google.genai import types
 
         user_content = (
@@ -120,30 +129,36 @@ class HypothesisGeneratorAgent:
         )
 
         used_model = self.model_name
-        try:
-            response = self.client.models.generate_content(
-                model=used_model,
-                contents=user_content,
-                config=config
-            )
-            if hasattr(response, "parsed") and response.parsed is not None:
-                hyp_set = response.parsed
-            else:
-                hyp_set = HypothesisSet.model_validate_json(response.text)
-        except Exception as e:
-            print(f"  [NOTICE] Error querying {used_model}: {e}. Retrying with {self.fallback_model}...")
-            used_model = self.fallback_model
-            response = self.client.models.generate_content(
-                model=used_model,
-                contents=user_content,
-                config=config
-            )
-            if hasattr(response, "parsed") and response.parsed is not None:
-                hyp_set = response.parsed
-            else:
-                hyp_set = HypothesisSet.model_validate_json(response.text)
+        last_error = None
 
-        return hyp_set, used_model
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = self.client.models.generate_content(
+                    model=used_model,
+                    contents=user_content,
+                    config=config
+                )
+                if hasattr(response, "parsed") and response.parsed is not None:
+                    hyp_set = response.parsed
+                else:
+                    hyp_set = HypothesisSet.model_validate_json(response.text)
+                
+                return hyp_set, used_model
+
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                if attempt < self.max_retries:
+                    delay = self.base_delay * (2 ** (attempt - 1)) # e.g., 2.0s, 4.0s, 8.0s, 16.0s
+                    print(f"  [RETRY {attempt}/{self.max_retries}] Query to '{used_model}' failed ({err_str}). Retrying in {delay:.1f}s...")
+                    time.sleep(delay)
+                else:
+                    print(f"  [FAIL] All {self.max_retries} attempts to query '{used_model}' failed. Final Error: {err_str}")
+                    raise RuntimeError(
+                        f"Phase 2 Agent #1 execution failed after {self.max_retries} retries on fixed model '{used_model}': {err_str}"
+                    ) from last_error
+
+        raise RuntimeError(f"Phase 2 Agent #1 execution failed on '{used_model}': {last_error}")
 
     def _generate_mock_hypotheses(self, case: FailureCase) -> HypothesisSet:
         """Fallback mock hypothesis generator for offline dry-run testing."""
