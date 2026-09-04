@@ -1,9 +1,9 @@
 {
-  "investigation_id": "inv_41243768",
+  "investigation_id": "inv_ff0c301a",
   "case_id": "case_syn_002",
   "target_model_name": "google/gemma-2-2b-it",
   "investigator_model_name": "gemini-3.8-flash",
-  "timestamp": "2026-09-04T20:23:35.913349+00:00",
+  "timestamp": "2026-09-04T20:39:30.030758+00:00",
   "budget_status": {
     "max_experiments": 5,
     "max_target_calls": 15,
@@ -14,7 +14,7 @@
   },
   "experiments": [
     {
-      "investigation_id": "inv_41243768",
+      "investigation_id": "inv_ff0c301a",
       "experiment_id": "exp_001",
       "hypothesis_id": 1,
       "experiment_type": "patch",
@@ -29,17 +29,17 @@
         1,
         2304
       ],
-      "activation_l2_norm": 47.44458770751953,
+      "activation_l2_norm": 48.007781982421875,
       "patch_delta_norm": 35.5,
       "observed_behavioral_delta": 1.0,
       "evidence_type": "intervention",
       "evidence_strength": "moderate",
-      "timestamp": "2026-09-04T20:23:35.913504+00:00",
+      "timestamp": "2026-09-04T20:39:30.030859+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "gemini-3.8-flash"
     },
     {
-      "investigation_id": "inv_41243768",
+      "investigation_id": "inv_ff0c301a",
       "experiment_id": "exp_002",
       "hypothesis_id": 2,
       "experiment_type": "ablate",
@@ -55,12 +55,12 @@
       "observed_behavioral_delta": 13.0,
       "evidence_type": "intervention",
       "evidence_strength": "moderate",
-      "timestamp": "2026-09-04T20:23:35.915946+00:00",
+      "timestamp": "2026-09-04T20:39:30.061257+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "gemini-3.8-flash"
     },
     {
-      "investigation_id": "inv_41243768",
+      "investigation_id": "inv_ff0c301a",
       "experiment_id": "exp_003",
       "hypothesis_id": 3,
       "experiment_type": "run_target",
@@ -76,7 +76,7 @@
       "observed_behavioral_delta": 0.0,
       "evidence_type": "observational",
       "evidence_strength": "weak",
-      "timestamp": "2026-09-04T20:23:35.917349+00:00",
+      "timestamp": "2026-09-04T20:39:30.063367+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "gemini-3.8-flash"
     }

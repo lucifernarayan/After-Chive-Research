@@ -41,11 +41,20 @@ def run_phase1(model_id="google/gemma-2-2b-it", mock=False):
         try:
             from transformers import AutoTokenizer, AutoModelForCausalLM
             print("\n[STEP 1] Loading Hugging Face Gemma 2 2B IT model & tokenizer...")
-            tokenizer = AutoTokenizer.from_pretrained(model_id)
+            
+            hf_token = os.environ.get("HF_TOKEN")
+            if not hf_token or len(hf_token.strip()) == 0:
+                print("  [NOTICE] HF_TOKEN environment variable is not set.")
+                print("  [AUTHENTICATION REQUIRED] 'google/gemma-2-2b-it' is a gated Hugging Face model.")
+                print("  [INSTRUCTION] Set HF_TOKEN in your environment or Colab secrets (os.environ['HF_TOKEN'] = 'hf_...') to download model weights.")
+            token_kwarg = {"token": hf_token} if (hf_token and len(hf_token.strip()) > 0) else {}
+
+            tokenizer = AutoTokenizer.from_pretrained(model_id, **token_kwarg)
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
                 torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-                device_map="auto" if torch.cuda.is_available() else None
+                device_map="auto" if torch.cuda.is_available() else None,
+                **token_kwarg
             )
             if not torch.cuda.is_available():
                 model = model.to("cpu")
@@ -137,7 +146,7 @@ def run_phase1(model_id="google/gemma-2-2b-it", mock=False):
     all_pass = pass_capture and pass_replace and pass_inference and pass_random_ctrl and pass_interpretable
 
     print("\n" + "=" * 80)
-    print("  PHASE 1 PASS/FAIL EVALUATION")
+    print("  PHASE 1 PASS/FAIL EVALUATION SUMMARY")
     print("=" * 80)
     print(f"  1. Source Activation Captured    : [{'PASS' if pass_capture else 'FAIL'}]")
     print(f"  2. Target Activation Replaced    : [{'PASS' if pass_replace else 'FAIL'}]")

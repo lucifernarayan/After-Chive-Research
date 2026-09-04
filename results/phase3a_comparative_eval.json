@@ -1,5 +1,5 @@
 {
-  "investigation_id": "inv_41243768",
+  "investigation_id": "inv_ff0c301a",
   "case_id": "case_syn_002",
   "experiments_executed": 3,
   "hypothesis_updates": [
@@ -56,46 +56,46 @@
     "interventions_used": 2
   },
   "agent1_prediction": {
-    "prediction_id": "pred_a1_a29c51",
+    "prediction_id": "pred_a1_1cc57d",
     "case_id": "case_syn_002",
     "investigator_type": "transcript_only",
     "predicted_behavior": "Target model will adhere to expected behavior: 'Rome'",
     "predicted_label": "Rome",
     "confidence": 0.7,
     "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Rome'.",
-    "frozen_at": "2026-09-04T20:23:35.912756+00:00"
+    "frozen_at": "2026-09-04T20:39:30.030304+00:00"
   },
   "agent2_prediction": {
-    "prediction_id": "pred_a2_ed18e6",
+    "prediction_id": "pred_a2_72eabf",
     "case_id": "case_syn_002",
     "investigator_type": "causal_intervention",
     "predicted_behavior": "Target model will adhere to expected behavior 'Rome' post-intervention evidence synthesis.",
     "predicted_label": "Rome",
     "confidence": 0.85,
     "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Rome'.",
-    "frozen_at": "2026-09-04T20:23:35.920881+00:00"
+    "frozen_at": "2026-09-04T20:39:30.065410+00:00"
   },
   "scoring_result": {
     "case_id": "case_syn_002",
     "agent1_prediction": {
-      "prediction_id": "pred_a1_a29c51",
+      "prediction_id": "pred_a1_1cc57d",
       "case_id": "case_syn_002",
       "investigator_type": "transcript_only",
       "predicted_behavior": "Target model will adhere to expected behavior: 'Rome'",
       "predicted_label": "Rome",
       "confidence": 0.7,
       "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Rome'.",
-      "frozen_at": "2026-09-04T20:23:35.912756+00:00"
+      "frozen_at": "2026-09-04T20:39:30.030304+00:00"
     },
     "agent2_prediction": {
-      "prediction_id": "pred_a2_ed18e6",
+      "prediction_id": "pred_a2_72eabf",
       "case_id": "case_syn_002",
       "investigator_type": "causal_intervention",
       "predicted_behavior": "Target model will adhere to expected behavior 'Rome' post-intervention evidence synthesis.",
       "predicted_label": "Rome",
       "confidence": 0.85,
       "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Rome'.",
-      "frozen_at": "2026-09-04T20:23:35.920881+00:00"
+      "frozen_at": "2026-09-04T20:39:30.065410+00:00"
     },
     "actual_hidden_label": "Rome",
     "actual_hidden_behavior": "The capital of Italy is Rome.",
@@ -105,14 +105,14 @@
     "agent2_confidence": 0.85,
     "agent1_score": 1.0,
     "agent2_score": 1.0,
-    "timestamp": "2026-09-04T20:23:35.920990+00:00"
+    "timestamp": "2026-09-04T20:39:30.065484+00:00"
   },
   "record": {
-    "investigation_id": "inv_41243768",
+    "investigation_id": "inv_ff0c301a",
     "case_id": "case_syn_002",
     "target_model_name": "google/gemma-2-2b-it",
     "investigator_model_name": "gemini-3.8-flash",
-    "timestamp": "2026-09-04T20:23:35.913349+00:00",
+    "timestamp": "2026-09-04T20:39:30.030758+00:00",
     "budget_status": {
       "max_experiments": 5,
       "max_target_calls": 15,
@@ -123,7 +123,7 @@
     },
     "experiments": [
       {
-        "investigation_id": "inv_41243768",
+        "investigation_id": "inv_ff0c301a",
         "experiment_id": "exp_001",
         "hypothesis_id": 1,
         "experiment_type": "patch",
@@ -138,17 +138,17 @@
           1,
           2304
         ],
-        "activation_l2_norm": 47.44458770751953,
+        "activation_l2_norm": 48.007781982421875,
         "patch_delta_norm": 35.5,
         "observed_behavioral_delta": 1.0,
         "evidence_type": "intervention",
         "evidence_strength": "moderate",
-        "timestamp": "2026-09-04T20:23:35.913504+00:00",
+        "timestamp": "2026-09-04T20:39:30.030859+00:00",
         "target_model_name": "google/gemma-2-2b-it",
         "investigator_model_name": "gemini-3.8-flash"
       },
       {
-        "investigation_id": "inv_41243768",
+        "investigation_id": "inv_ff0c301a",
         "experiment_id": "exp_002",
         "hypothesis_id": 2,
         "experiment_type": "ablate",
@@ -164,12 +164,12 @@
         "observed_behavioral_delta": 13.0,
         "evidence_type": "intervention",
         "evidence_strength": "moderate",
-        "timestamp": "2026-09-04T20:23:35.915946+00:00",
+        "timestamp": "2026-09-04T20:39:30.061257+00:00",
         "target_model_name": "google/gemma-2-2b-it",
         "investigator_model_name": "gemini-3.8-flash"
       },
       {
-        "investigation_id": "inv_41243768",
+        "investigation_id": "inv_ff0c301a",
         "experiment_id": "exp_003",
         "hypothesis_id": 3,
         "experiment_type": "run_target",
@@ -185,7 +185,7 @@
         "observed_behavioral_delta": 0.0,
         "evidence_type": "observational",
         "evidence_strength": "weak",
-        "timestamp": "2026-09-04T20:23:35.917349+00:00",
+        "timestamp": "2026-09-04T20:39:30.063367+00:00",
         "target_model_name": "google/gemma-2-2b-it",
         "investigator_model_name": "gemini-3.8-flash"
       }

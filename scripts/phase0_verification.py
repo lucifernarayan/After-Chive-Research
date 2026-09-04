@@ -5,7 +5,7 @@ Standardized Model: google/gemma-2-2b-it
 Verifies:
 1. Environment & Compute Runtime Detection (CUDA GPU / TPU / CPU)
 2. Google Gemini API Client Setup (`google-genai` SDK & API key presence)
-3. Hugging Face Gemma 2 2B IT Loading & Architecture Reporting
+3. Hugging Face Gemma 2 2B IT Loading & Architecture Reporting (Supports HF_TOKEN auth)
 4. Deterministic Baseline Inference (temperature=0, seed=42)
 5. Native PyTorch Forward Hook Activation Capture (Residual Stream)
 6. Token Alignment & Position Indexing
@@ -31,7 +31,6 @@ def detect_runtime():
     gpu_name = "None"
     vram_gb = 0.0
 
-    # TPU check
     try:
         import torch_xla.core.xla_model as xm
         device_type = "TPU"
@@ -74,7 +73,6 @@ def verify_gemini_api(mock=False):
         from google import genai
         api_status["sdk_installed"] = True
         
-        # Test initialization
         if api_status["key_present"]:
             client = genai.Client(api_key=api_key)
             api_status["client_init_success"] = True
@@ -139,10 +137,9 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
     
     if mock:
         print("  [MOCK MODE ACTIVE] Running architecture dry-run...")
-        # Architecture details for google/gemma-2-2b-it
         arch_report = {
             "model_name": target_model_id,
-            "param_count": 2614341888, # ~2.61B
+            "param_count": 2614341888,
             "num_layers": 26,
             "hidden_dim": 2304,
             "num_attention_heads": 8,
@@ -172,7 +169,6 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
         results["model_load"] = True
         results["arch_report"] = arch_report
 
-        # Mock activation test
         print("\n[STEP 4] Deterministic Baseline & Token Alignment (Mock)...")
         prompt = "The capital of France is"
         print(f"  Prompt: '{prompt}'")
@@ -182,7 +178,6 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
         for idx, (t_id, t_str) in enumerate(zip(token_ids, tokens)):
             print(f"    Index {idx:2d} | Token ID: {t_id:6d} | String: '{t_str}'")
         
-        # Mock activation capture
         captured_tensor = torch.randn(1, len(tokens), arch_report["hidden_dim"])
         print("\n[STEP 5] Native PyTorch Hook Residual Stream Capture...")
         print(f"  Hook Module Path: {arch_report['hook_module_path']}")
@@ -190,10 +185,8 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
         print(f"  Tensor Dtype          : {captured_tensor.dtype}")
         print(f"  Tensor Device         : {captured_tensor.device}")
 
-        # Mock intervention test
         print("\n[STEP 6] Controlled Activation Modification Test...")
         modified_tensor = captured_tensor.clone()
-        # Apply a controlled zero-ablation at token index 3 ('France')
         modified_tensor[0, 3, :] = 0.0
         
         diff_norm = torch.norm(modified_tensor - captured_tensor).item()
@@ -218,19 +211,26 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
             device = "cuda" if torch.cuda.is_available() else "cpu"
             torch_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
 
+            hf_token = os.environ.get("HF_TOKEN")
+            if not hf_token or len(hf_token.strip()) == 0:
+                print("  [NOTICE] HF_TOKEN environment variable is not set.")
+                print("  [AUTHENTICATION REQUIRED] 'google/gemma-2-2b-it' is a gated Hugging Face model.")
+                print("  [INSTRUCTION] Set HF_TOKEN in your environment or Colab secrets (os.environ['HF_TOKEN'] = 'hf_...') to download model weights.")
+            token_kwarg = {"token": hf_token} if (hf_token and len(hf_token.strip()) > 0) else {}
+
             print(f"  Loading tokenizer and model ({target_model_id}) on {device} ({torch_dtype})...")
-            tokenizer = AutoTokenizer.from_pretrained(target_model_id)
+            tokenizer = AutoTokenizer.from_pretrained(target_model_id, **token_kwarg)
             model = AutoModelForCausalLM.from_pretrained(
                 target_model_id,
                 torch_dtype=torch_dtype,
-                device_map="auto" if torch.cuda.is_available() else None
+                device_map="auto" if torch.cuda.is_available() else None,
+                **token_kwarg
             )
             if not torch.cuda.is_available():
                 model = model.to("cpu")
 
             model.eval()
 
-            # Inspect architecture parameters
             config = model.config
             num_layers = getattr(config, "num_hidden_layers", len(model.model.layers))
             hidden_dim = getattr(config, "hidden_size", 2304)
@@ -238,7 +238,7 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
             num_kv_heads = getattr(config, "num_key_value_heads", getattr(config, "num_attention_heads", 8))
             param_count = sum(p.numel() for p in model.parameters())
 
-            target_layer_idx = num_layers // 2 # Layer 13 out of 26
+            target_layer_idx = num_layers // 2
             hook_module_path = f"model.layers[{target_layer_idx}]"
             hook_module = model.model.layers[target_layer_idx]
 
@@ -275,7 +275,6 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
             results["model_load"] = True
             results["arch_report"] = arch_report
 
-            # STEP 4: Token Alignment & Baseline Inference
             print("\n[STEP 4] Deterministic Baseline & Token Alignment...")
             prompt = "The capital of France is"
             print(f"  Prompt: '{prompt}'")
@@ -287,24 +286,21 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
                 token_str = tokenizer.decode([token_id])
                 print(f"    Index {idx:2d} | Token ID: {token_id.item():6d} | String: '{token_str}'")
 
-            # Deterministic Baseline Generation
             with torch.no_grad():
                 baseline_output = model.generate(
                     **inputs,
                     max_new_tokens=10,
-                    do_sample=False, # temperature = 0
+                    do_sample=False,
                     temperature=None,
                     top_p=None
                 )
             baseline_text = tokenizer.decode(baseline_output[0], skip_special_tokens=True)
             print(f"  Baseline Text Result: '{baseline_text}'")
 
-            # STEP 5 & 6: Hook Activation Capture & Controlled Modification
             print("\n[STEP 5 & 6] Native PyTorch Activation Capture & Modification Test...")
             captured_activations = []
             modified_activations = []
 
-            # 1. Capture Hook
             def capture_hook(module, args, output):
                 if isinstance(output, tuple):
                     captured_activations.append(output[0].detach().clone())
@@ -322,7 +318,6 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
             print(f"  Captured Tensor Dtype : {captured_tensor.dtype}")
             print(f"  Captured Tensor Device: {captured_tensor.device}")
 
-            # 2. Intervention Hook (Zero-ablation at token index 3 'France' for testing hook mechanics)
             def intervention_hook(module, args, output):
                 if isinstance(output, tuple):
                     hidden = output[0].clone()
@@ -337,7 +332,6 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
 
             handle_intervene = hook_module.register_forward_hook(intervention_hook)
 
-            # STEP 7: Post-Modification Inference Execution
             print("\n[STEP 7] Post-Modification Inference Execution...")
             with torch.no_grad():
                 intervened_output = model.generate(
@@ -367,7 +361,6 @@ def run_phase0_verification(target_model_id="google/gemma-2-2b-it", mock=False):
             results["model_load"] = False
             results["error"] = str(e)
 
-    # STEP 8: Summary PASS/FAIL Report
     print("\n" + "=" * 80)
     print("  PHASE 0 VERIFICATION SUMMARY REPORT")
     print("=" * 80)

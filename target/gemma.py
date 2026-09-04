@@ -1,8 +1,10 @@
 """
 Target Model Interface: google/gemma-2-2b-it.
 Provides controlled PyTorch forward hook primitives for activation capture, residual patching, and zero-ablation.
+Supports secure Hugging Face authentication via HF_TOKEN environment variable for gated model access.
 """
 
+import os
 import torch
 import torch.nn.functional as F
 from typing import Dict, List, Tuple, Optional, Any
@@ -26,13 +28,23 @@ class GemmaTargetInterface:
             self._load_model()
 
     def _load_model(self):
-        """Load Hugging Face Gemma 2 2B IT model & tokenizer."""
+        """Load Hugging Face Gemma 2 2B IT model & tokenizer with secure HF_TOKEN support."""
         from transformers import AutoTokenizer, AutoModelForCausalLM
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+
+        hf_token = os.environ.get("HF_TOKEN")
+        if not hf_token or len(hf_token.strip()) == 0:
+            print("  [NOTICE] HF_TOKEN environment variable is not set.")
+            print("  [AUTHENTICATION REQUIRED] 'google/gemma-2-2b-it' is a gated Hugging Face model.")
+            print("  [INSTRUCTION] Set HF_TOKEN in your environment or Colab secrets (os.environ['HF_TOKEN'] = 'hf_...') to download model weights.")
+
+        token_kwarg = {"token": hf_token} if (hf_token and len(hf_token.strip()) > 0) else {}
+
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id, **token_kwarg)
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_id,
             torch_dtype=self.torch_dtype,
-            device_map="auto" if torch.cuda.is_available() else None
+            device_map="auto" if torch.cuda.is_available() else None,
+            **token_kwarg
         )
         if not torch.cuda.is_available():
             self.model = self.model.to("cpu")
@@ -67,7 +79,6 @@ class GemmaTargetInterface:
         captured = []
 
         def hook_fn(module, args, output):
-            # Output is a tuple (hidden_states, attn_weights, ...)
             if isinstance(output, tuple):
                 act = output[0][:, pos:pos+1, :].detach().clone()
             else:
@@ -99,13 +110,9 @@ class GemmaTargetInterface:
             patch_out = target_prompt + " Paris."
             return base_out, patch_out, 35.5, torch.randn(1, 1, 2304)
 
-        # 1. Capture source activation
         source_tensor, _ = self.capture_activation(source_prompt, layer_idx, source_pos)
-
-        # 2. Target baseline
         target_baseline = self.run_inference(target_prompt)
 
-        # 3. Patch forward pass
         inputs = self.tokenizer(target_prompt, return_tensors="pt").to(self.device)
         seq_len = inputs["input_ids"].shape[1]
         t_pos = max(0, min(target_pos, seq_len - 1))
