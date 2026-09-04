@@ -1,0 +1,80 @@
+{
+  "model_id": "google/gemma-2-2b-it",
+  "mock_mode": true,
+  "device": "cpu",
+  "torch_version": "2.13.0+cpu",
+  "layer_12_experiment": {
+    "experiment_id": "exp_4b1a2afb",
+    "model_name": "google/gemma-2-2b-it",
+    "layer": 12,
+    "source_prompt": "The capital of France is",
+    "target_prompt": "The capital of Italy is",
+    "source_token": {
+      "position_index": 3,
+      "token_id": 103,
+      "token_str": "France",
+      "sequence_length": 5
+    },
+    "target_token": {
+      "position_index": 3,
+      "token_id": 103,
+      "token_str": "Italy",
+      "sequence_length": 5
+    },
+    "source_behavior": {
+      "generated_text": "The capital of France is Paris.",
+      "new_tokens_text": " Paris.",
+      "candidate_logprobs": {
+        "Paris": -0.15,
+        "Rome": -7.2
+      },
+      "top_predicted_token": " Paris"
+    },
+    "target_baseline_behavior": {
+      "generated_text": "The capital of Italy is Rome.",
+      "new_tokens_text": " Rome.",
+      "candidate_logprobs": {
+        "Paris": -6.5,
+        "Rome": -0.2
+      },
+      "top_predicted_token": " Rome"
+    },
+    "patched_behavior": {
+      "generated_text": "The capital of Italy is Paris.",
+      "new_tokens_text": " Paris.",
+      "candidate_logprobs": {
+        "Paris": -0.5,
+        "Rome": -3.1
+      },
+      "top_predicted_token": " Paris"
+    },
+    "random_control_behavior": {
+      "generated_text": "The capital of Italy is Rome.",
+      "new_tokens_text": " Rome.",
+      "candidate_logprobs": {
+        "Paris": -6.4,
+        "Rome": -0.25
+      },
+      "top_predicted_token": " Rome"
+    },
+    "activation_shape": [
+      1,
+      1,
+      2304
+    ],
+    "activation_l2_norm": 47.172977447509766,
+    "patch_delta_norm": 42.5,
+    "random_delta_norm": 42.1,
+    "behavioral_movement_toward_source": 0.0,
+    "random_movement_toward_source": 0.0,
+    "is_specific_causal_effect": false,
+    "execution_success": true,
+    "metadata": {
+      "torch_version": "2.13.0+cpu",
+      "device": "cpu",
+      "mock": true
+    }
+  },
+  "sweep_best_causal_layer": null,
+  "summary_plot_ascii": "\n=========================================================\n  LAYER -> CAUSAL INTERVENTION EFFECT SIZE (ASCII PLOT)\n=========================================================\n  Layer  2 | Patch:                           (+0.00) [DISRUPTIVE]\n           | Rand :                           (+0.00)\n  -------------------------------------------------------\n  Layer  6 | Patch:                           (+0.00) [DISRUPTIVE]\n           | Rand :                           (+0.00)\n  -------------------------------------------------------\n  Layer 10 | Patch:                           (+0.00) [DISRUPTIVE]\n           | Rand :                           (+0.00)\n  -------------------------------------------------------\n  Layer 14 | Patch:                           (+0.00) [DISRUPTIVE]\n           | Rand :                           (+0.00)\n  -------------------------------------------------------\n  Layer 18 | Patch:                           (+0.00) [DISRUPTIVE]\n           | Rand :                           (+0.00)\n  -------------------------------------------------------\n  Layer 22 | Patch:                           (+0.00) [DISRUPTIVE]\n           | Rand :                           (+0.00)\n  -------------------------------------------------------\n  Layer 25 | Patch:                           (+0.00) [DISRUPTIVE]\n           | Rand :                           (+0.00)\n  -------------------------------------------------------"
+}
