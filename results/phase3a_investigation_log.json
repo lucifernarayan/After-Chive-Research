@@ -1,9 +1,9 @@
 {
-  "investigation_id": "inv_549fb4c4",
+  "investigation_id": "inv_5909898f",
   "case_id": "case_syn_002",
   "target_model_name": "google/gemma-2-2b-it",
   "investigator_model_name": "gemini-3.8-flash",
-  "timestamp": "2026-09-04T20:06:26.630053+00:00",
+  "timestamp": "2026-09-04T20:15:27.308980+00:00",
   "budget_status": {
     "max_experiments": 5,
     "max_target_calls": 15,
@@ -14,7 +14,7 @@
   },
   "experiments": [
     {
-      "investigation_id": "inv_549fb4c4",
+      "investigation_id": "inv_5909898f",
       "experiment_id": "exp_001",
       "hypothesis_id": 1,
       "experiment_type": "patch",
@@ -29,15 +29,17 @@
         1,
         2304
       ],
-      "activation_l2_norm": 48.723594665527344,
+      "activation_l2_norm": 48.44253921508789,
       "patch_delta_norm": 35.5,
       "observed_behavioral_delta": 1.0,
-      "timestamp": "2026-09-04T20:06:26.630504+00:00",
+      "evidence_type": "intervention",
+      "evidence_strength": "moderate",
+      "timestamp": "2026-09-04T20:15:27.309309+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "gemini-3.8-flash"
     },
     {
-      "investigation_id": "inv_549fb4c4",
+      "investigation_id": "inv_5909898f",
       "experiment_id": "exp_002",
       "hypothesis_id": 2,
       "experiment_type": "ablate",
@@ -51,12 +53,14 @@
       "activation_l2_norm": null,
       "patch_delta_norm": 48.2,
       "observed_behavioral_delta": 13.0,
-      "timestamp": "2026-09-04T20:06:26.659015+00:00",
+      "evidence_type": "intervention",
+      "evidence_strength": "moderate",
+      "timestamp": "2026-09-04T20:15:27.331310+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "gemini-3.8-flash"
     },
     {
-      "investigation_id": "inv_549fb4c4",
+      "investigation_id": "inv_5909898f",
       "experiment_id": "exp_003",
       "hypothesis_id": 3,
       "experiment_type": "run_target",
@@ -70,7 +74,9 @@
       "activation_l2_norm": null,
       "patch_delta_norm": null,
       "observed_behavioral_delta": 0.0,
-      "timestamp": "2026-09-04T20:06:26.660679+00:00",
+      "evidence_type": "observational",
+      "evidence_strength": "weak",
+      "timestamp": "2026-09-04T20:15:27.332651+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "gemini-3.8-flash"
     }
@@ -85,9 +91,11 @@
         "exp_001"
       ],
       "contradicting_experiments": [],
-      "updated_confidence": "high",
-      "status": "supported",
-      "rationale": "Residual stream activation patching (Layer 12) caused a measurable behavioral shift toward source answer (delta=1.00)."
+      "evidence_type": "intervention",
+      "evidence_strength": "weak",
+      "updated_confidence": "medium",
+      "status": "unresolved",
+      "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift (delta=1.00), confirming causal relevance of the layer representation. However, because the tool operates on the layer residual stream rather than isolating individual attention heads, evidence for the specific attention-head mechanism remains indirect/inconclusive."
     },
     {
       "hypothesis_id": 2,
@@ -98,9 +106,11 @@
         "exp_002"
       ],
       "contradicting_experiments": [],
+      "evidence_type": "intervention",
+      "evidence_strength": "weak",
       "updated_confidence": "medium",
-      "status": "supported",
-      "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00)."
+      "status": "unresolved",
+      "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
     },
     {
       "hypothesis_id": 3,
@@ -109,10 +119,12 @@
       "prior_confidence": "low",
       "supporting_experiments": [],
       "contradicting_experiments": [],
+      "evidence_type": "observational",
+      "evidence_strength": "weak",
       "updated_confidence": "low",
       "status": "unresolved",
       "rationale": "No causal intervention evidence gathered yet."
     }
   ],
-  "final_mechanistic_summary": "Phase 3A investigation complete for case 'case_syn_002'. Executed 3 experiments across 3 hypotheses. Primary supported hypothesis: Hypothesis #1."
+  "final_mechanistic_summary": "Phase 3A investigation complete for case 'case_syn_002'. Executed 3 experiments across 3 hypotheses. Residual-stream interventions established causal relevance of hidden representations at Layer 12, providing moderate intervention evidence for Hypothesis #1. Note: Component-level mechanisms (e.g. specific attention heads) remain unresolved."
 }

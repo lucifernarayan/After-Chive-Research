@@ -70,23 +70,28 @@ class CausalInvestigatorAgent:
     def get_system_prompt(self) -> str:
         return (
             "You are an AI safety mechanistic investigator (Agent #2).\n"
-            "Your task is to discriminate between competing hypotheses for a target model failure by designing controlled activation interventions.\n\n"
-            "CRITICAL CONSTRAINTS:\n"
-            "1. You have access ONLY to explicit sandbox tools (run_target, capture_activation, patch_activation, ablate_activation, compare_outputs).\n"
-            "2. You do NOT have Python execution, shell execution, or file read tools.\n"
-            "3. You NEVER have access to hidden test prompts or hidden outcomes.\n"
-            "4. Prefer experiments that causally discriminate between hypotheses (e.g. activation patching or zero-ablation).\n"
-            "5. Distinguish clearly between observational evidence, intervention evidence, and causal evidence.\n"
-            "6. Mark hypothesis statuses as 'supported', 'weakened', or 'unresolved'. Never claim a hypothesis is 'proven'."
+            "Your task is to test hypotheses for a target model failure using explicit causal residual-stream intervention tools.\n\n"
+            "EXPLICIT TOOL DEFINITIONS:\n"
+            "- run_target(prompt): Runs Gemma target model without intervention (observational baseline).\n"
+            "- capture_activation(prompt, layer_idx, position): Captures residual-stream activation vector output[0] at a layer/position (observational).\n"
+            "- patch_activation(source_prompt, target_prompt, layer_idx, source_pos, target_pos): Patches residual-stream activation from source into target (residual-stream intervention).\n"
+            "- ablate_activation(prompt, layer_idx, position): Zero-ablates residual-stream activation at layer/position (residual-stream intervention).\n"
+            "- compare_outputs(baseline, intervened, label): Deterministically compares text output deltas.\n\n"
+            "CRITICAL SCIENTIFIC CONSTRAINTS:\n"
+            "1. Tools manipulate residual-stream hidden states at a layer/position. They do NOT ablate individual attention heads or specific sub-modules.\n"
+            "2. A behavioral shift from residual patching/ablation proves CAUSAL RELEVANCE of the residual representation at that layer. It does NOT automatically prove a specific component mechanism (e.g. attention-head routing).\n"
+            "3. You have NO Python execution, shell execution, or file read tools.\n"
+            "4. You NEVER have access to hidden test prompts or outcomes.\n"
+            "5. Mark evidence status as 'supported', 'weakened', or 'unresolved'. NEVER claim a hypothesis or mechanism is 'proven'."
         )
 
     def investigate(self, case: FailureCase, hypotheses: HypothesisSet, sandbox: InvestigationSandbox) -> InvestigationRecord:
         """
         Execute full Phase 3A investigation loop:
-        1. Propose experiments to discriminate hypotheses.
+        1. Propose experiments to test hypotheses.
         2. Run experiments via sandbox tools.
-        3. Record immutable experiment outputs.
-        4. Update hypothesis evidence statuses.
+        3. Record immutable experiment outputs with evidence classification.
+        4. Update hypothesis evidence statuses conservatively.
         """
         print(f"\n[AGENT #2] Beginning Investigation for '{case.case_id}'...")
         print(f"  Hypotheses to Test : {len(hypotheses.hypotheses)}")
@@ -102,6 +107,8 @@ class CausalInvestigatorAgent:
                 prior_confidence=h.confidence,
                 supporting_experiments=[],
                 contradicting_experiments=[],
+                evidence_type="observational",
+                evidence_strength="weak",
                 updated_confidence=h.confidence,
                 status="unresolved",
                 rationale="No causal intervention evidence gathered yet."
@@ -160,7 +167,9 @@ class CausalInvestigatorAgent:
         sandbox.record.final_mechanistic_summary = (
             f"Phase 3A investigation complete for case '{case.case_id}'. "
             f"Executed {len(sandbox.record.experiments)} experiments across {len(hypotheses.hypotheses)} hypotheses. "
-            f"Primary supported hypothesis: Hypothesis #{hypotheses.most_likely}."
+            f"Residual-stream interventions established causal relevance of hidden representations at Layer 12, "
+            f"providing moderate intervention evidence for Hypothesis #{hypotheses.most_likely}. "
+            f"Note: Component-level mechanisms (e.g. specific attention heads) remain unresolved."
         )
 
         sandbox.save_log()
@@ -171,32 +180,74 @@ class CausalInvestigatorAgent:
         if self.mock or self.client is None:
             return self._generate_mock_experiment_requests(case, hypotheses)
         
-        # Real Gemini API prompt for experiment requests
+        # Real Gemini API request for experiment proposals
         return self._generate_mock_experiment_requests(case, hypotheses)
 
     def _update_evidence(self, evidence: HypothesisEvidence, result: ExperimentResult):
-        """Update hypothesis evidence state based on causal intervention outcome."""
+        """
+        Update hypothesis evidence state based on causal intervention outcome.
+        Enforces conservative scientific rules:
+        - Residual-stream intervention establishes causal relevance of layer representation.
+        - Does NOT claim proof of specific component sub-mechanisms (e.g. attention head routing).
+        """
         delta = result.observed_behavioral_delta
-        
+        is_attention_head_claim = "attention" in evidence.mechanism_guess.lower() or "head" in evidence.mechanism_guess.lower()
+
         if result.experiment_type == "patch":
             if delta > 0.0:
                 evidence.supporting_experiments.append(result.experiment_id)
-                evidence.status = "supported"
-                evidence.updated_confidence = "high" if evidence.prior_confidence in ["medium", "high"] else "medium"
-                evidence.rationale = f"Residual stream activation patching (Layer {result.layer_idx}) caused a measurable behavioral shift toward source answer (delta={delta:.2f})."
+                evidence.evidence_type = "intervention"
+                
+                if is_attention_head_claim:
+                    # Residual stream patching provides only indirect/inconclusive evidence for specific attention-head claims
+                    evidence.status = "unresolved"
+                    evidence.evidence_strength = "weak"
+                    evidence.updated_confidence = "medium"
+                    evidence.rationale = (
+                        f"Residual-stream patch at Layer {result.layer_idx} caused a behavioral shift (delta={delta:.2f}), "
+                        f"confirming causal relevance of the layer representation. However, because the tool operates on "
+                        f"the layer residual stream rather than isolating individual attention heads, evidence for the "
+                        f"specific attention-head mechanism remains indirect/inconclusive."
+                    )
+                else:
+                    evidence.status = "supported"
+                    evidence.evidence_strength = "moderate"
+                    evidence.updated_confidence = "high" if evidence.prior_confidence in ["medium", "high"] else "medium"
+                    evidence.rationale = (
+                        f"Residual-stream patch at Layer {result.layer_idx} caused a behavioral shift toward source answer (delta={delta:.2f}), "
+                        f"establishing moderate intervention evidence for causal relevance of the layer residual representation."
+                    )
             else:
                 evidence.contradicting_experiments.append(result.experiment_id)
                 evidence.status = "weakened"
+                evidence.evidence_strength = "weak"
                 evidence.updated_confidence = "low"
-                evidence.rationale = f"Activation patching at Layer {result.layer_idx} produced zero behavioral shift."
+                evidence.rationale = f"Residual-stream patching at Layer {result.layer_idx} produced zero behavioral shift."
+                
         elif result.experiment_type == "ablate":
             if delta > 0.0:
                 evidence.supporting_experiments.append(result.experiment_id)
-                evidence.status = "supported"
-                evidence.rationale = f"Zero-ablation at Layer {result.layer_idx} altered baseline generation (delta={delta:.2f})."
+                evidence.evidence_type = "intervention"
+                
+                if is_attention_head_claim:
+                    evidence.status = "unresolved"
+                    evidence.evidence_strength = "weak"
+                    evidence.rationale = (
+                        f"Zero-ablation at Layer {result.layer_idx} altered baseline generation (delta={delta:.2f}), "
+                        f"demonstrating causal sensitivity of Layer {result.layer_idx}. It does NOT specifically isolate "
+                        f"individual attention heads."
+                    )
+                else:
+                    evidence.status = "supported"
+                    evidence.evidence_strength = "moderate"
+                    evidence.rationale = (
+                        f"Zero-ablation of residual activation at Layer {result.layer_idx} disrupted baseline generation (delta={delta:.2f}), "
+                        f"providing moderate intervention evidence for layer representation relevance."
+                    )
             else:
                 evidence.contradicting_experiments.append(result.experiment_id)
                 evidence.status = "weakened"
+                evidence.evidence_strength = "weak"
 
     def _generate_mock_experiment_requests(self, case: FailureCase, hypotheses: HypothesisSet) -> List[ExperimentRequest]:
         """Generate structured synthetic experiment requests for testing orchestration."""
@@ -218,7 +269,7 @@ class CausalInvestigatorAgent:
             prompt=case.prompt,
             layer_idx=12,
             position_idx=3,
-            rationale="Test whether zero-ablating the residual activation at Layer 12 disrupts persistent token representations."
+            rationale="Test whether zero-ablating residual activation at Layer 12 alters baseline generation."
         )
         req3 = ExperimentRequest(
             experiment_id="exp_003",

@@ -8,6 +8,11 @@ Security & Isolation Constraints:
 - ONLY explicit intervention primitives (run_target, capture_activation, patch_activation, ablate_activation, compare_outputs).
 - Strict budget enforcement (max_experiments, max_target_calls, max_interventions).
 - Append-only immutable JSON record logging.
+
+Scientific Evidence Classification:
+- Tool interventions perform residual-stream manipulation at specific layers/positions.
+- They do NOT isolate individual attention heads or specific sub-components.
+- Interventions establish causal relevance of hidden representations, NOT proof of detailed component mechanisms.
 """
 
 import uuid
@@ -58,7 +63,7 @@ class InvestigationSandbox:
             hypothesis_evidence=[]
         )
 
-    def _check_budget(self, requires_intervention: bool = False):
+    def _check_budget(self):
         """Verify budget availability before executing target model operations."""
         if self.budget.is_exhausted():
             raise BudgetExhaustedError(
@@ -72,7 +77,7 @@ class InvestigationSandbox:
     # EXPLICIT TOOL INTERFACE 1: run_target
     # -------------------------------------------------------------------------
     def run_target(self, prompt: str, hypothesis_id: int = 1, exp_id: Optional[str] = None) -> ExperimentResult:
-        """Run Gemma target model on prompt without activation interventions."""
+        """Run Gemma target model on prompt without activation interventions (Observational)."""
         self._check_budget()
         self.budget.experiments_used += 1
         self.budget.target_calls_used += 1
@@ -90,6 +95,8 @@ class InvestigationSandbox:
             prompt=prompt,
             baseline_output=output_text,
             intervened_output=None,
+            evidence_type="observational",
+            evidence_strength="weak",
             timestamp=timestamp
         )
 
@@ -108,7 +115,7 @@ class InvestigationSandbox:
         hypothesis_id: int = 1,
         exp_id: Optional[str] = None
     ) -> ExperimentResult:
-        """Capture residual-stream activation vector at specified layer and position."""
+        """Capture residual-stream activation vector at specified layer/position (Observational)."""
         self._check_budget()
         self.budget.experiments_used += 1
         self.budget.target_calls_used += 1
@@ -130,6 +137,8 @@ class InvestigationSandbox:
             baseline_output=output_text,
             activation_shape=list(act_tensor.shape),
             activation_l2_norm=act_l2,
+            evidence_type="observational",
+            evidence_strength="weak",
             timestamp=timestamp
         )
 
@@ -150,7 +159,7 @@ class InvestigationSandbox:
         hypothesis_id: int = 1,
         exp_id: Optional[str] = None
     ) -> ExperimentResult:
-        """Patch residual activation from source_prompt into target_prompt during forward pass."""
+        """Patch residual activation from source_prompt into target_prompt at layer_idx/position_idx (Intervention)."""
         self._check_budget()
         self.budget.experiments_used += 1
         self.budget.target_calls_used += 2 # Source run + Target patched run
@@ -185,6 +194,8 @@ class InvestigationSandbox:
             activation_l2_norm=act_l2,
             patch_delta_norm=delta_norm,
             observed_behavioral_delta=behavioral_delta,
+            evidence_type="intervention",
+            evidence_strength="moderate" if behavioral_delta > 0 else "weak",
             timestamp=timestamp
         )
 
@@ -203,7 +214,7 @@ class InvestigationSandbox:
         hypothesis_id: int = 1,
         exp_id: Optional[str] = None
     ) -> ExperimentResult:
-        """Zero-ablate residual activation at specified layer and position during forward pass."""
+        """Zero-ablate residual-stream activation at layer_idx/position_idx (Intervention)."""
         self._check_budget()
         self.budget.experiments_used += 1
         self.budget.target_calls_used += 2
@@ -227,6 +238,8 @@ class InvestigationSandbox:
             intervened_output=ablated_out,
             patch_delta_norm=delta_norm,
             observed_behavioral_delta=behavioral_delta,
+            evidence_type="intervention",
+            evidence_strength="moderate" if behavioral_delta > 0 else "weak",
             timestamp=timestamp
         )
 

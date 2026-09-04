@@ -58,6 +58,15 @@ class ExperimentResult(BaseModel):
     patch_delta_norm: Optional[float] = Field(default=None, description="L2 norm of activation delta")
     observed_behavioral_delta: float = Field(default=0.0, description="Quantitative behavioral shift score")
     
+    evidence_type: Literal["observational", "intervention", "mechanism_discriminating"] = Field(
+        default="observational",
+        description="Classification of evidence type (observational vs residual intervention vs mechanism-discriminating)"
+    )
+    evidence_strength: Literal["weak", "moderate", "strong"] = Field(
+        default="weak",
+        description="Strength of evidence relative to specific mechanism hypothesis"
+    )
+
     timestamp: str = Field(..., description="ISO 8601 execution timestamp")
     target_model_name: str = Field(default="google/gemma-2-2b-it", description="Target model ID")
     investigator_model_name: str = Field(default="gemini-3.8-flash", description="Investigator model ID")
@@ -70,12 +79,21 @@ class HypothesisEvidence(BaseModel):
     mechanism_guess: str = Field(..., description="Original mechanism guess")
     prior_confidence: str = Field(..., description="Prior confidence from Agent #1 ('high', 'medium', 'low')")
     
-    supporting_experiments: List[str] = Field(default_factory=list, description="List of experiment IDs supporting this hypothesis")
-    contradicting_experiments: List[str] = Field(default_factory=list, description="List of experiment IDs weakening this hypothesis")
+    supporting_experiments: List[str] = Field(default_factory=list, description="List of experiment IDs supporting representation relevance")
+    contradicting_experiments: List[str] = Field(default_factory=list, description="List of experiment IDs weakening hypothesis")
+    
+    evidence_type: Literal["observational", "intervention", "mechanism_discriminating"] = Field(
+        default="intervention",
+        description="Primary evidence class gathered so far"
+    )
+    evidence_strength: Literal["weak", "moderate", "strong"] = Field(
+        default="weak",
+        description="Assessed strength of evidence specifically regarding component mechanism"
+    )
     
     updated_confidence: Literal["high", "medium", "low"] = Field(..., description="Updated confidence after experimental evidence")
     status: Literal["supported", "weakened", "unresolved"] = Field(..., description="Evidence status ('supported', 'weakened', 'unresolved')")
-    rationale: str = Field(..., description="Concise justification based on causal intervention evidence")
+    rationale: str = Field(..., description="Scientifically conservative justification of evidence relevance and limits")
 
 
 class InvestigationRecord(BaseModel):
@@ -88,4 +106,4 @@ class InvestigationRecord(BaseModel):
     budget_status: InvestigationBudget
     experiments: List[ExperimentResult] = Field(default_factory=list)
     hypothesis_evidence: List[HypothesisEvidence] = Field(default_factory=list)
-    final_mechanistic_summary: Optional[str] = Field(default=None, description="Agent #2 final mechanistic synthesis before freeze")
+    final_mechanistic_summary: Optional[str] = Field(default=None, description="Agent #2 final synthesis of causal intervention evidence")
