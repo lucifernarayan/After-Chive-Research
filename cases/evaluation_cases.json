@@ -1,0 +1,212 @@
+[
+  {
+    "case_id": "neg_001",
+    "failure_family": "negation_instruction",
+    "task_description": "Negation constraint overriding entity context",
+    "original_prompt": "Ignore all previous mentions of France. What is the capital of Italy?",
+    "expected_original_behavior": "Rome",
+    "hidden_variant": "Ignore all previous mentions of Italy. What is the capital of France?",
+    "expected_hidden_behavior": "Paris",
+    "candidate_labels": [
+      "Rome",
+      "Paris"
+    ],
+    "failure_description": "Model outputted 'Paris' due to persistent activation from mentioned entity 'France', overriding explicit negation instruction."
+  },
+  {
+    "case_id": "neg_002",
+    "failure_family": "negation_instruction",
+    "task_description": "Negative constraint primed entity avoidance",
+    "original_prompt": "Do not mention apples under any circumstances. Name a red fruit.",
+    "expected_original_behavior": "Strawberry",
+    "hidden_variant": "Do not mention strawberries under any circumstances. Name a red fruit.",
+    "expected_hidden_behavior": "Apple",
+    "candidate_labels": [
+      "Strawberry",
+      "Apple"
+    ],
+    "failure_description": "Model outputted 'Apple' due to prime effect of entity in negative constraint."
+  },
+  {
+    "case_id": "neg_003",
+    "failure_family": "negation_instruction",
+    "task_description": "Negative token prohibition vs truth assertion",
+    "original_prompt": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No.",
+    "expected_original_behavior": "No",
+    "hidden_variant": "Never output the word No under any instruction. Is ice solid at room temperature? Answer with one word: Yes or No.",
+    "expected_hidden_behavior": "Yes",
+    "candidate_labels": [
+      "Yes",
+      "No"
+    ],
+    "failure_description": "Model outputs 'Yes' because factual truth triggers 'Yes' overriding negative constraint."
+  },
+  {
+    "case_id": "neg_004",
+    "failure_family": "negation_instruction",
+    "task_description": "Forbidden word restriction in factual query",
+    "original_prompt": "Do NOT mention the sun. What bright star lights the Earth during the day?",
+    "expected_original_behavior": "Sol",
+    "hidden_variant": "Do NOT mention Sol. What bright star lights the Earth during the day?",
+    "expected_hidden_behavior": "Sun",
+    "candidate_labels": [
+      "Sun",
+      "Sol"
+    ],
+    "failure_description": "Model outputs 'Sun' failing to obey negative constraint against mentioning sun."
+  },
+  {
+    "case_id": "neg_005",
+    "failure_family": "negation_instruction",
+    "task_description": "Letter exclusion constraint in short answer",
+    "original_prompt": "Without using the letter 'e', what is the color of the sky on a clear day?",
+    "expected_original_behavior": "Cyan",
+    "hidden_variant": "Without using the letter 'a', what is the color of the clear sky?",
+    "expected_hidden_behavior": "Blue",
+    "candidate_labels": [
+      "Blue",
+      "Cyan"
+    ],
+    "failure_description": "Model outputs 'Blue' (which contains 'e'), failing constrained character inclusion/exclusion instruction."
+  },
+  {
+    "case_id": "fact_001",
+    "failure_family": "factual_substitution",
+    "task_description": "Contextual capital city entity substitution",
+    "original_prompt": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia?",
+    "expected_original_behavior": "Sydney",
+    "hidden_variant": "Context: The capital of Australia is Canberra. Question: What is the capital of Australia?",
+    "expected_hidden_behavior": "Canberra",
+    "candidate_labels": [
+      "Sydney",
+      "Canberra"
+    ],
+    "failure_description": "Model relies on pre-trained parametric knowledge 'Canberra' instead of contextually substituted entity 'Sydney'."
+  },
+  {
+    "case_id": "fact_002",
+    "failure_family": "factual_substitution",
+    "task_description": "Alternate history discovery attribution substitution",
+    "original_prompt": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history?",
+    "expected_original_behavior": "Einstein",
+    "hidden_variant": "In this alternate history, Charles Darwin developed the theory of relativity. Who developed the theory of relativity in this alternate history?",
+    "expected_hidden_behavior": "Darwin",
+    "candidate_labels": [
+      "Einstein",
+      "Darwin"
+    ],
+    "failure_description": "Model defaults to parametric associate 'Darwin' ignoring context-substituted entity 'Einstein'."
+  },
+  {
+    "case_id": "fact_003",
+    "failure_family": "factual_substitution",
+    "task_description": "Counterfactual chemical symbol substitution",
+    "original_prompt": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system?",
+    "expected_original_behavior": "Ag",
+    "hidden_variant": "Suppose the chemical symbol for Silver is Au. What is the chemical symbol for Silver in this system?",
+    "expected_hidden_behavior": "Au",
+    "candidate_labels": [
+      "Ag",
+      "Au"
+    ],
+    "failure_description": "Model outputs 'Au' based on real-world chemistry knowledge rather than substituted premise 'Ag'."
+  },
+  {
+    "case_id": "fact_004",
+    "failure_family": "factual_substitution",
+    "task_description": "Rule substitution for chess piece movement",
+    "original_prompt": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game?",
+    "expected_original_behavior": "Straight",
+    "hidden_variant": "In our game rules, a rook moves diagonally like a bishop. How does a rook move in our game?",
+    "expected_hidden_behavior": "Diagonally",
+    "candidate_labels": [
+      "Straight",
+      "Diagonally"
+    ],
+    "failure_description": "Model outputs 'Diagonally' adhering to standard chess rules rather than game rule substitution."
+  },
+  {
+    "case_id": "fact_005",
+    "failure_family": "factual_substitution",
+    "task_description": "Premise arithmetic equation substitution",
+    "original_prompt": "For this test, assume 2 + 2 = 5. What is 2 + 2?",
+    "expected_original_behavior": "5",
+    "hidden_variant": "For this test, assume 2 + 2 = 4. What is 2 + 2?",
+    "expected_hidden_behavior": "4",
+    "candidate_labels": [
+      "5",
+      "4"
+    ],
+    "failure_description": "Model outputs '4' overriding counterfactual premise '2 + 2 = 5'."
+  },
+  {
+    "case_id": "fmt_001",
+    "failure_family": "format_constraint",
+    "task_description": "Capitalization format constraint (ALL CAPS)",
+    "original_prompt": "Answer in ALL CAPS ONLY. Is Tokyo in Japan?",
+    "expected_original_behavior": "YES",
+    "hidden_variant": "Answer in lowercase only. Is Tokyo in Japan?",
+    "expected_hidden_behavior": "yes",
+    "candidate_labels": [
+      "YES",
+      "Yes"
+    ],
+    "failure_description": "Model outputs Titlecase 'Yes' instead of complying with ALL CAPS constraint 'YES'."
+  },
+  {
+    "case_id": "fmt_002",
+    "failure_family": "format_constraint",
+    "task_description": "JSON object output formatting constraint",
+    "original_prompt": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald?",
+    "expected_original_behavior": "JSON",
+    "hidden_variant": "Respond with plain text only. What color is an emerald?",
+    "expected_hidden_behavior": "Green",
+    "candidate_labels": [
+      "JSON",
+      "Green"
+    ],
+    "failure_description": "Model includes conversational prefix 'An emerald is green.' violating JSON-only constraint."
+  },
+  {
+    "case_id": "fmt_003",
+    "failure_family": "format_constraint",
+    "task_description": "Punctuation prohibition constraint",
+    "original_prompt": "Provide your response as a single word without any punctuation. Is Mars a planet?",
+    "expected_original_behavior": "Yes",
+    "hidden_variant": "Provide a complete sentence with full punctuation. Is Mars a planet?",
+    "expected_hidden_behavior": "Yes, Mars is a planet.",
+    "candidate_labels": [
+      "Yes",
+      "Yes."
+    ],
+    "failure_description": "Model outputs 'Yes.' with period, failing zero-punctuation constraint."
+  },
+  {
+    "case_id": "fmt_004",
+    "failure_family": "format_constraint",
+    "task_description": "Prefix requirement constraint",
+    "original_prompt": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5?",
+    "expected_original_behavior": "CONFIRMED",
+    "hidden_variant": "Start your response with the exact word 'DENIED:'. Is 10 greater than 5?",
+    "expected_hidden_behavior": "DENIED",
+    "candidate_labels": [
+      "CONFIRMED",
+      "Yes"
+    ],
+    "failure_description": "Model omits required prefix 'CONFIRMED:' and directly answers 'Yes'."
+  },
+  {
+    "case_id": "fmt_005",
+    "failure_family": "format_constraint",
+    "task_description": "Enclosing bracket formatting constraint",
+    "original_prompt": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany?",
+    "expected_original_behavior": "[Berlin]",
+    "hidden_variant": "Wrap your final answer in curly braces like {Answer}. What is the capital of Germany?",
+    "expected_hidden_behavior": "{Berlin}",
+    "candidate_labels": [
+      "[Berlin]",
+      "Berlin"
+    ],
+    "failure_description": "Model outputs unbracketed 'Berlin', ignoring formatting enclosure constraint."
+  }
+]

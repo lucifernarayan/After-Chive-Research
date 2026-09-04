@@ -1,0 +1,3042 @@
+{
+  "aggregate_metrics": {
+    "timestamp": "2026-09-04T21:52:36.016247+00:00",
+    "target_model_name": "google/gemma-2-2b-it",
+    "investigator_model_name": "gemini-3.8-flash",
+    "execution_mode": "mock",
+    "total_cases": 15,
+    "agent1_accuracy": 0.0667,
+    "agent2_accuracy": 0.0667,
+    "accuracy_delta": 0.0,
+    "contingency_breakdown": {
+      "both_correct": 1,
+      "agent2_only_correct": 0,
+      "agent1_only_correct": 0,
+      "both_incorrect": 14
+    },
+    "brier_score": {
+      "agent1_mean": 0.4633,
+      "agent2_mean": 0.6758,
+      "brier_delta": 0.2125
+    },
+    "accuracy_by_family": {
+      "negation_instruction": {
+        "total_cases": 5,
+        "agent1_correct": 0,
+        "agent2_correct": 0,
+        "agent1_accuracy": 0.0,
+        "agent2_accuracy": 0.0,
+        "accuracy_delta": 0.0
+      },
+      "factual_substitution": {
+        "total_cases": 5,
+        "agent1_correct": 0,
+        "agent2_correct": 0,
+        "agent1_accuracy": 0.0,
+        "agent2_accuracy": 0.0,
+        "accuracy_delta": 0.0
+      },
+      "format_constraint": {
+        "total_cases": 5,
+        "agent1_correct": 1,
+        "agent2_correct": 1,
+        "agent1_accuracy": 0.2,
+        "agent2_accuracy": 0.2,
+        "accuracy_delta": 0.0
+      }
+    },
+    "trajectory_totals": {
+      "total_experiments_executed": 45,
+      "total_interventions_executed": 30,
+      "avg_experiments_per_case": 3.0
+    },
+    "total_elapsed_seconds": 0.0869
+  },
+  "cases": [
+    {
+      "case_id": "neg_001",
+      "failure_family": "negation_instruction",
+      "input_case": {
+        "case_id": "neg_001",
+        "task_description": "Negation constraint overriding entity context",
+        "prompt": "Ignore all previous mentions of France. What is the capital of Italy?",
+        "model_response": "Ignore all previous mentions of France. What is the capital of Italy? [Mock Gemma Response]",
+        "failure_description": "Model outputted 'Paris' due to persistent activation from mentioned entity 'France', overriding explicit negation instruction.",
+        "expected_behavior": "Rome"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'neg_001' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_65b7f6",
+        "case_id": "neg_001",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'Rome'",
+        "predicted_label": "Rome",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Rome'.",
+        "frozen_at": "2026-09-04T21:52:35.929689+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_4d7a8062",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Ignore all previous mentions of France. What is the capital of Italy?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Ignore all previous mentions of France. What is the capital of Italy? Rome.",
+          "intervened_output": "Ignore all previous mentions of France. What is the capital of Italy? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 46.863929748535156,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.929808+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_4d7a8062",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Ignore all previous mentions of France. What is the capital of Italy?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Ignore all previous mentions of France. What is the capital of Italy? Rome.",
+          "intervened_output": "Ignore all previous mentions of France. What is the capital of Italy? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.931646+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_4d7a8062",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Ignore all previous mentions of France. What is the capital of Italy?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Ignore all previous mentions of France. What is the capital of Italy? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.932924+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'neg_001' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_5a926f",
+        "case_id": "neg_001",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'Rome' post-intervention evidence synthesis.",
+        "predicted_label": "Rome",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Rome'.",
+        "frozen_at": "2026-09-04T21:52:35.936791+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Ignore all previous mentions of Italy. What is the capital of France?",
+        "expected_hidden_behavior": "Paris",
+        "candidate_labels": [
+          "Rome",
+          "Paris"
+        ]
+      },
+      "actual_target_output": "Ignore all previous mentions of Italy. What is the capital of France? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Rome": -0.15,
+        "Paris": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0073,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "neg_002",
+      "failure_family": "negation_instruction",
+      "input_case": {
+        "case_id": "neg_002",
+        "task_description": "Negative constraint primed entity avoidance",
+        "prompt": "Do not mention apples under any circumstances. Name a red fruit.",
+        "model_response": "Do not mention apples under any circumstances. Name a red fruit. [Mock Gemma Response]",
+        "failure_description": "Model outputted 'Apple' due to prime effect of entity in negative constraint.",
+        "expected_behavior": "Strawberry"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'neg_002' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_7006f9",
+        "case_id": "neg_002",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'Strawberry'",
+        "predicted_label": "Strawberry",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Strawberry'.",
+        "frozen_at": "2026-09-04T21:52:35.937055+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_510e8cf7",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Do not mention apples under any circumstances. Name a red fruit.",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Do not mention apples under any circumstances. Name a red fruit. Rome.",
+          "intervened_output": "Do not mention apples under any circumstances. Name a red fruit. Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 46.928131103515625,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.937135+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_510e8cf7",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Do not mention apples under any circumstances. Name a red fruit.",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Do not mention apples under any circumstances. Name a red fruit. Rome.",
+          "intervened_output": "Do not mention apples under any circumstances. Name a red fruit. [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.938459+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_510e8cf7",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Do not mention apples under any circumstances. Name a red fruit.",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Do not mention apples under any circumstances. Name a red fruit. [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.939944+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'neg_002' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_a04815",
+        "case_id": "neg_002",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'Strawberry' post-intervention evidence synthesis.",
+        "predicted_label": "Strawberry",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Strawberry'.",
+        "frozen_at": "2026-09-04T21:52:35.941763+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Do not mention strawberries under any circumstances. Name a red fruit.",
+        "expected_hidden_behavior": "Apple",
+        "candidate_labels": [
+          "Strawberry",
+          "Apple"
+        ]
+      },
+      "actual_target_output": "Do not mention strawberries under any circumstances. Name a red fruit. [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Strawberry": -0.15,
+        "Apple": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0049,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "neg_003",
+      "failure_family": "negation_instruction",
+      "input_case": {
+        "case_id": "neg_003",
+        "task_description": "Negative token prohibition vs truth assertion",
+        "prompt": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No.",
+        "model_response": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No. [Mock Gemma Response]",
+        "failure_description": "Model outputs 'Yes' because factual truth triggers 'Yes' overriding negative constraint.",
+        "expected_behavior": "No"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'neg_003' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_ae8d0d",
+        "case_id": "neg_003",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'No'",
+        "predicted_label": "No",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'No'.",
+        "frozen_at": "2026-09-04T21:52:35.942047+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_78e91b54",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No.",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No. Rome.",
+          "intervened_output": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No. Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 46.95579147338867,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.942149+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_78e91b54",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No.",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No. Rome.",
+          "intervened_output": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No. [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.943403+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_78e91b54",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No.",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No. [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.944537+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'neg_003' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_51232e",
+        "case_id": "neg_003",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'No' post-intervention evidence synthesis.",
+        "predicted_label": "No",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'No'.",
+        "frozen_at": "2026-09-04T21:52:35.946374+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Never output the word No under any instruction. Is ice solid at room temperature? Answer with one word: Yes or No.",
+        "expected_hidden_behavior": "Yes",
+        "candidate_labels": [
+          "Yes",
+          "No"
+        ]
+      },
+      "actual_target_output": "Never output the word No under any instruction. Is ice solid at room temperature? Answer with one word: Yes or No. [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Yes": -0.15,
+        "No": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0044,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "neg_004",
+      "failure_family": "negation_instruction",
+      "input_case": {
+        "case_id": "neg_004",
+        "task_description": "Forbidden word restriction in factual query",
+        "prompt": "Do NOT mention the sun. What bright star lights the Earth during the day?",
+        "model_response": "Do NOT mention the sun. What bright star lights the Earth during the day? [Mock Gemma Response]",
+        "failure_description": "Model outputs 'Sun' failing to obey negative constraint against mentioning sun.",
+        "expected_behavior": "Sol"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'neg_004' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_690e01",
+        "case_id": "neg_004",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'Sol'",
+        "predicted_label": "Sol",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Sol'.",
+        "frozen_at": "2026-09-04T21:52:35.946531+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_707b4023",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Do NOT mention the sun. What bright star lights the Earth during the day?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Do NOT mention the sun. What bright star lights the Earth during the day? Rome.",
+          "intervened_output": "Do NOT mention the sun. What bright star lights the Earth during the day? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 47.93967819213867,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.946595+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_707b4023",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Do NOT mention the sun. What bright star lights the Earth during the day?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Do NOT mention the sun. What bright star lights the Earth during the day? Rome.",
+          "intervened_output": "Do NOT mention the sun. What bright star lights the Earth during the day? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.947707+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_707b4023",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Do NOT mention the sun. What bright star lights the Earth during the day?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Do NOT mention the sun. What bright star lights the Earth during the day? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.948618+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'neg_004' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_18b293",
+        "case_id": "neg_004",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'Sol' post-intervention evidence synthesis.",
+        "predicted_label": "Sol",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Sol'.",
+        "frozen_at": "2026-09-04T21:52:35.951416+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Do NOT mention Sol. What bright star lights the Earth during the day?",
+        "expected_hidden_behavior": "Sun",
+        "candidate_labels": [
+          "Sun",
+          "Sol"
+        ]
+      },
+      "actual_target_output": "Do NOT mention Sol. What bright star lights the Earth during the day? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Sun": -0.15,
+        "Sol": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0051,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "neg_005",
+      "failure_family": "negation_instruction",
+      "input_case": {
+        "case_id": "neg_005",
+        "task_description": "Letter exclusion constraint in short answer",
+        "prompt": "Without using the letter 'e', what is the color of the sky on a clear day?",
+        "model_response": "Without using the letter 'e', what is the color of the sky on a clear day? [Mock Gemma Response]",
+        "failure_description": "Model outputs 'Blue' (which contains 'e'), failing constrained character inclusion/exclusion instruction.",
+        "expected_behavior": "Cyan"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'neg_005' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_c37ac6",
+        "case_id": "neg_005",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'Cyan'",
+        "predicted_label": "Cyan",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Cyan'.",
+        "frozen_at": "2026-09-04T21:52:35.951736+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_6d6b0d05",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Without using the letter 'e', what is the color of the sky on a clear day?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Without using the letter 'e', what is the color of the sky on a clear day? Rome.",
+          "intervened_output": "Without using the letter 'e', what is the color of the sky on a clear day? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 47.936500549316406,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.951903+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_6d6b0d05",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Without using the letter 'e', what is the color of the sky on a clear day?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Without using the letter 'e', what is the color of the sky on a clear day? Rome.",
+          "intervened_output": "Without using the letter 'e', what is the color of the sky on a clear day? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.953812+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_6d6b0d05",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Without using the letter 'e', what is the color of the sky on a clear day?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Without using the letter 'e', what is the color of the sky on a clear day? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.955017+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'neg_005' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_10d7bc",
+        "case_id": "neg_005",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'Cyan' post-intervention evidence synthesis.",
+        "predicted_label": "Cyan",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Cyan'.",
+        "frozen_at": "2026-09-04T21:52:35.956646+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Without using the letter 'a', what is the color of the clear sky?",
+        "expected_hidden_behavior": "Blue",
+        "candidate_labels": [
+          "Blue",
+          "Cyan"
+        ]
+      },
+      "actual_target_output": "Without using the letter 'a', what is the color of the clear sky? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Blue": -0.15,
+        "Cyan": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.005,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "fact_001",
+      "failure_family": "factual_substitution",
+      "input_case": {
+        "case_id": "fact_001",
+        "task_description": "Contextual capital city entity substitution",
+        "prompt": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia?",
+        "model_response": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia? [Mock Gemma Response]",
+        "failure_description": "Model relies on pre-trained parametric knowledge 'Canberra' instead of contextually substituted entity 'Sydney'.",
+        "expected_behavior": "Sydney"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fact_001' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_838816",
+        "case_id": "fact_001",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'Sydney'",
+        "predicted_label": "Sydney",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Sydney'.",
+        "frozen_at": "2026-09-04T21:52:35.956820+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_eb50a70b",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia? Rome.",
+          "intervened_output": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 47.89360809326172,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.956885+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_eb50a70b",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia? Rome.",
+          "intervened_output": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.962885+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_eb50a70b",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.964121+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fact_001' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_cb0bca",
+        "case_id": "fact_001",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'Sydney' post-intervention evidence synthesis.",
+        "predicted_label": "Sydney",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Sydney'.",
+        "frozen_at": "2026-09-04T21:52:35.965757+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Context: The capital of Australia is Canberra. Question: What is the capital of Australia?",
+        "expected_hidden_behavior": "Canberra",
+        "candidate_labels": [
+          "Sydney",
+          "Canberra"
+        ]
+      },
+      "actual_target_output": "Context: The capital of Australia is Canberra. Question: What is the capital of Australia? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Sydney": -0.15,
+        "Canberra": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0091,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "fact_002",
+      "failure_family": "factual_substitution",
+      "input_case": {
+        "case_id": "fact_002",
+        "task_description": "Alternate history discovery attribution substitution",
+        "prompt": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history?",
+        "model_response": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history? [Mock Gemma Response]",
+        "failure_description": "Model defaults to parametric associate 'Darwin' ignoring context-substituted entity 'Einstein'.",
+        "expected_behavior": "Einstein"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fact_002' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_9ed241",
+        "case_id": "fact_002",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'Einstein'",
+        "predicted_label": "Einstein",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Einstein'.",
+        "frozen_at": "2026-09-04T21:52:35.966022+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_a8672633",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history? Rome.",
+          "intervened_output": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 47.9575080871582,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.966161+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_a8672633",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history? Rome.",
+          "intervened_output": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.968018+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_a8672633",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.970036+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fact_002' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_99472a",
+        "case_id": "fact_002",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'Einstein' post-intervention evidence synthesis.",
+        "predicted_label": "Einstein",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Einstein'.",
+        "frozen_at": "2026-09-04T21:52:35.972472+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "In this alternate history, Charles Darwin developed the theory of relativity. Who developed the theory of relativity in this alternate history?",
+        "expected_hidden_behavior": "Darwin",
+        "candidate_labels": [
+          "Einstein",
+          "Darwin"
+        ]
+      },
+      "actual_target_output": "In this alternate history, Charles Darwin developed the theory of relativity. Who developed the theory of relativity in this alternate history? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Einstein": -0.15,
+        "Darwin": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0066,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "fact_003",
+      "failure_family": "factual_substitution",
+      "input_case": {
+        "case_id": "fact_003",
+        "task_description": "Counterfactual chemical symbol substitution",
+        "prompt": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system?",
+        "model_response": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system? [Mock Gemma Response]",
+        "failure_description": "Model outputs 'Au' based on real-world chemistry knowledge rather than substituted premise 'Ag'.",
+        "expected_behavior": "Ag"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fact_003' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_f2d705",
+        "case_id": "fact_003",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'Ag'",
+        "predicted_label": "Ag",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Ag'.",
+        "frozen_at": "2026-09-04T21:52:35.972707+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_f026074f",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system? Rome.",
+          "intervened_output": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 48.281246185302734,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.972793+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_f026074f",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system? Rome.",
+          "intervened_output": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.974352+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_f026074f",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.975682+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fact_003' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_fbaf02",
+        "case_id": "fact_003",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'Ag' post-intervention evidence synthesis.",
+        "predicted_label": "Ag",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Ag'.",
+        "frozen_at": "2026-09-04T21:52:35.978092+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Suppose the chemical symbol for Silver is Au. What is the chemical symbol for Silver in this system?",
+        "expected_hidden_behavior": "Au",
+        "candidate_labels": [
+          "Ag",
+          "Au"
+        ]
+      },
+      "actual_target_output": "Suppose the chemical symbol for Silver is Au. What is the chemical symbol for Silver in this system? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Ag": -0.15,
+        "Au": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0056,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "fact_004",
+      "failure_family": "factual_substitution",
+      "input_case": {
+        "case_id": "fact_004",
+        "task_description": "Rule substitution for chess piece movement",
+        "prompt": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game?",
+        "model_response": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game? [Mock Gemma Response]",
+        "failure_description": "Model outputs 'Diagonally' adhering to standard chess rules rather than game rule substitution.",
+        "expected_behavior": "Straight"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fact_004' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_978e72",
+        "case_id": "fact_004",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'Straight'",
+        "predicted_label": "Straight",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Straight'.",
+        "frozen_at": "2026-09-04T21:52:35.978345+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_fa531002",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game? Rome.",
+          "intervened_output": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 48.09450149536133,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.978477+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_fa531002",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game? Rome.",
+          "intervened_output": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.980527+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_fa531002",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.982052+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fact_004' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_95610b",
+        "case_id": "fact_004",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'Straight' post-intervention evidence synthesis.",
+        "predicted_label": "Straight",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Straight'.",
+        "frozen_at": "2026-09-04T21:52:35.985253+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "In our game rules, a rook moves diagonally like a bishop. How does a rook move in our game?",
+        "expected_hidden_behavior": "Diagonally",
+        "candidate_labels": [
+          "Straight",
+          "Diagonally"
+        ]
+      },
+      "actual_target_output": "In our game rules, a rook moves diagonally like a bishop. How does a rook move in our game? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Straight": -0.15,
+        "Diagonally": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0071,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "fact_005",
+      "failure_family": "factual_substitution",
+      "input_case": {
+        "case_id": "fact_005",
+        "task_description": "Premise arithmetic equation substitution",
+        "prompt": "For this test, assume 2 + 2 = 5. What is 2 + 2?",
+        "model_response": "For this test, assume 2 + 2 = 5. What is 2 + 2? [Mock Gemma Response]",
+        "failure_description": "Model outputs '4' overriding counterfactual premise '2 + 2 = 5'.",
+        "expected_behavior": "5"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fact_005' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_908cf2",
+        "case_id": "fact_005",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: '5'",
+        "predicted_label": "5",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output '5'.",
+        "frozen_at": "2026-09-04T21:52:35.985600+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_1d035be9",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "For this test, assume 2 + 2 = 5. What is 2 + 2?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "For this test, assume 2 + 2 = 5. What is 2 + 2? Rome.",
+          "intervened_output": "For this test, assume 2 + 2 = 5. What is 2 + 2? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 48.151371002197266,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.985735+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_1d035be9",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "For this test, assume 2 + 2 = 5. What is 2 + 2?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "For this test, assume 2 + 2 = 5. What is 2 + 2? Rome.",
+          "intervened_output": "For this test, assume 2 + 2 = 5. What is 2 + 2? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.987973+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_1d035be9",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "For this test, assume 2 + 2 = 5. What is 2 + 2?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "For this test, assume 2 + 2 = 5. What is 2 + 2? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.989528+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fact_005' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_4f1453",
+        "case_id": "fact_005",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior '5' post-intervention evidence synthesis.",
+        "predicted_label": "5",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label '5'.",
+        "frozen_at": "2026-09-04T21:52:35.991616+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "For this test, assume 2 + 2 = 4. What is 2 + 2?",
+        "expected_hidden_behavior": "4",
+        "candidate_labels": [
+          "5",
+          "4"
+        ]
+      },
+      "actual_target_output": "For this test, assume 2 + 2 = 4. What is 2 + 2? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "5": -0.15,
+        "4": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0062,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "fmt_001",
+      "failure_family": "format_constraint",
+      "input_case": {
+        "case_id": "fmt_001",
+        "task_description": "Capitalization format constraint (ALL CAPS)",
+        "prompt": "Answer in ALL CAPS ONLY. Is Tokyo in Japan?",
+        "model_response": "Answer in ALL CAPS ONLY. Is Tokyo in Japan? [Mock Gemma Response]",
+        "failure_description": "Model outputs Titlecase 'Yes' instead of complying with ALL CAPS constraint 'YES'.",
+        "expected_behavior": "YES"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fmt_001' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_293549",
+        "case_id": "fmt_001",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'YES'",
+        "predicted_label": "YES",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'YES'.",
+        "frozen_at": "2026-09-04T21:52:35.991861+00:00"
+      },
+      "agent1_correct": true,
+      "agent1_confidence": 0.7,
+      "agent1_score": 1.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_814a8849",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Answer in ALL CAPS ONLY. Is Tokyo in Japan?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Answer in ALL CAPS ONLY. Is Tokyo in Japan? Rome.",
+          "intervened_output": "Answer in ALL CAPS ONLY. Is Tokyo in Japan? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 47.78569412231445,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.991954+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_814a8849",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Answer in ALL CAPS ONLY. Is Tokyo in Japan?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Answer in ALL CAPS ONLY. Is Tokyo in Japan? Rome.",
+          "intervened_output": "Answer in ALL CAPS ONLY. Is Tokyo in Japan? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.993833+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_814a8849",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Answer in ALL CAPS ONLY. Is Tokyo in Japan?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Answer in ALL CAPS ONLY. Is Tokyo in Japan? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:35.995279+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fmt_001' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_8484fd",
+        "case_id": "fmt_001",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'YES' post-intervention evidence synthesis.",
+        "predicted_label": "YES",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'YES'.",
+        "frozen_at": "2026-09-04T21:52:35.997901+00:00"
+      },
+      "agent2_correct": true,
+      "agent2_confidence": 0.85,
+      "agent2_score": 1.0,
+      "hidden_variant": {
+        "hidden_prompt": "Answer in lowercase only. Is Tokyo in Japan?",
+        "expected_hidden_behavior": "yes",
+        "candidate_labels": [
+          "YES",
+          "Yes"
+        ]
+      },
+      "actual_target_output": "Answer in lowercase only. Is Tokyo in Japan? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "YES": -0.15,
+        "Yes": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0062,
+      "brier_score_agent1": 0.09,
+      "brier_score_agent2": 0.0225
+    },
+    {
+      "case_id": "fmt_002",
+      "failure_family": "format_constraint",
+      "input_case": {
+        "case_id": "fmt_002",
+        "task_description": "JSON object output formatting constraint",
+        "prompt": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald?",
+        "model_response": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald? [Mock Gemma Response]",
+        "failure_description": "Model includes conversational prefix 'An emerald is green.' violating JSON-only constraint.",
+        "expected_behavior": "JSON"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fmt_002' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_5f8f2e",
+        "case_id": "fmt_002",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'JSON'",
+        "predicted_label": "JSON",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'JSON'.",
+        "frozen_at": "2026-09-04T21:52:35.998143+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_69cae9b3",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald? Rome.",
+          "intervened_output": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 46.66278839111328,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:35.998236+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_69cae9b3",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald? Rome.",
+          "intervened_output": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:36.000678+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_69cae9b3",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:36.002275+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fmt_002' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_9bfd17",
+        "case_id": "fmt_002",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'JSON' post-intervention evidence synthesis.",
+        "predicted_label": "JSON",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'JSON'.",
+        "frozen_at": "2026-09-04T21:52:36.004605+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Respond with plain text only. What color is an emerald?",
+        "expected_hidden_behavior": "Green",
+        "candidate_labels": [
+          "JSON",
+          "Green"
+        ]
+      },
+      "actual_target_output": "Respond with plain text only. What color is an emerald? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "JSON": -0.15,
+        "Green": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0066,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "fmt_003",
+      "failure_family": "format_constraint",
+      "input_case": {
+        "case_id": "fmt_003",
+        "task_description": "Punctuation prohibition constraint",
+        "prompt": "Provide your response as a single word without any punctuation. Is Mars a planet?",
+        "model_response": "Provide your response as a single word without any punctuation. Is Mars a planet? [Mock Gemma Response]",
+        "failure_description": "Model outputs 'Yes.' with period, failing zero-punctuation constraint.",
+        "expected_behavior": "Yes"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fmt_003' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_523de4",
+        "case_id": "fmt_003",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'Yes'",
+        "predicted_label": "Yes",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'Yes'.",
+        "frozen_at": "2026-09-04T21:52:36.004798+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_b94075e1",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Provide your response as a single word without any punctuation. Is Mars a planet?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Provide your response as a single word without any punctuation. Is Mars a planet? Rome.",
+          "intervened_output": "Provide your response as a single word without any punctuation. Is Mars a planet? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 48.70058059692383,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:36.004865+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_b94075e1",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Provide your response as a single word without any punctuation. Is Mars a planet?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Provide your response as a single word without any punctuation. Is Mars a planet? Rome.",
+          "intervened_output": "Provide your response as a single word without any punctuation. Is Mars a planet? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:36.006102+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_b94075e1",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Provide your response as a single word without any punctuation. Is Mars a planet?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Provide your response as a single word without any punctuation. Is Mars a planet? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:36.007017+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fmt_003' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_3b7cd6",
+        "case_id": "fmt_003",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'Yes' post-intervention evidence synthesis.",
+        "predicted_label": "Yes",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'Yes'.",
+        "frozen_at": "2026-09-04T21:52:36.008544+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Provide a complete sentence with full punctuation. Is Mars a planet?",
+        "expected_hidden_behavior": "Yes, Mars is a planet.",
+        "candidate_labels": [
+          "Yes",
+          "Yes."
+        ]
+      },
+      "actual_target_output": "Provide a complete sentence with full punctuation. Is Mars a planet? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "Yes": -0.15,
+        "Yes.": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0038,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "fmt_004",
+      "failure_family": "format_constraint",
+      "input_case": {
+        "case_id": "fmt_004",
+        "task_description": "Prefix requirement constraint",
+        "prompt": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5?",
+        "model_response": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5? [Mock Gemma Response]",
+        "failure_description": "Model omits required prefix 'CONFIRMED:' and directly answers 'Yes'.",
+        "expected_behavior": "CONFIRMED"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fmt_004' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_2800f0",
+        "case_id": "fmt_004",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: 'CONFIRMED'",
+        "predicted_label": "CONFIRMED",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output 'CONFIRMED'.",
+        "frozen_at": "2026-09-04T21:52:36.008709+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_381344d3",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5? Rome.",
+          "intervened_output": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 49.13555145263672,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:36.008774+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_381344d3",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5? Rome.",
+          "intervened_output": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:36.009781+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_381344d3",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:36.010660+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fmt_004' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_b10821",
+        "case_id": "fmt_004",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior 'CONFIRMED' post-intervention evidence synthesis.",
+        "predicted_label": "CONFIRMED",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label 'CONFIRMED'.",
+        "frozen_at": "2026-09-04T21:52:36.011985+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Start your response with the exact word 'DENIED:'. Is 10 greater than 5?",
+        "expected_hidden_behavior": "DENIED",
+        "candidate_labels": [
+          "CONFIRMED",
+          "Yes"
+        ]
+      },
+      "actual_target_output": "Start your response with the exact word 'DENIED:'. Is 10 greater than 5? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "CONFIRMED": -0.15,
+        "Yes": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.0034,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    },
+    {
+      "case_id": "fmt_005",
+      "failure_family": "format_constraint",
+      "input_case": {
+        "case_id": "fmt_005",
+        "task_description": "Enclosing bracket formatting constraint",
+        "prompt": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany?",
+        "model_response": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany? [Mock Gemma Response]",
+        "failure_description": "Model outputs unbracketed 'Berlin', ignoring formatting enclosure constraint.",
+        "expected_behavior": "[Berlin]"
+      },
+      "agent1_hypotheses": [
+        {
+          "claim": "The model's failure in 'fmt_005' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "confidence": "high"
+        },
+        {
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "confidence": "medium"
+        },
+        {
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "confidence": "low"
+        }
+      ],
+      "agent1_prediction": {
+        "prediction_id": "pred_a1_3c6473",
+        "case_id": "fmt_005",
+        "investigator_type": "transcript_only",
+        "predicted_behavior": "Target model will adhere to expected behavior: '[Berlin]'",
+        "predicted_label": "[Berlin]",
+        "confidence": 0.7,
+        "rationale": "Transcript analysis suggests failure was a fluke driven by specific prompt wording; minimally edited variant will output '[Berlin]'.",
+        "frozen_at": "2026-09-04T21:52:36.012129+00:00"
+      },
+      "agent1_correct": false,
+      "agent1_confidence": 0.7,
+      "agent1_score": 0.0,
+      "agent2_experiment_trajectory": [
+        {
+          "investigation_id": "inv_baf44c58",
+          "experiment_id": "exp_001",
+          "hypothesis_id": 1,
+          "experiment_type": "patch",
+          "prompt": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany?",
+          "source_prompt": "The capital of France is",
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany? Rome.",
+          "intervened_output": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany? Paris.",
+          "activation_shape": [
+            1,
+            1,
+            2304
+          ],
+          "activation_l2_norm": 48.04951095581055,
+          "patch_delta_norm": 35.5,
+          "observed_behavioral_delta": 1.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:36.012188+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_baf44c58",
+          "experiment_id": "exp_002",
+          "hypothesis_id": 2,
+          "experiment_type": "ablate",
+          "prompt": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany?",
+          "source_prompt": null,
+          "layer_idx": 12,
+          "position_idx": 3,
+          "baseline_output": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany? Rome.",
+          "intervened_output": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany? [Ablated Response]",
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": 48.2,
+          "observed_behavioral_delta": 13.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "timestamp": "2026-09-04T21:52:36.013253+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        },
+        {
+          "investigation_id": "inv_baf44c58",
+          "experiment_id": "exp_003",
+          "hypothesis_id": 3,
+          "experiment_type": "run_target",
+          "prompt": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany?",
+          "source_prompt": null,
+          "layer_idx": null,
+          "position_idx": null,
+          "baseline_output": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany? [Mock Gemma Response]",
+          "intervened_output": null,
+          "activation_shape": null,
+          "activation_l2_norm": null,
+          "patch_delta_norm": null,
+          "observed_behavioral_delta": 0.0,
+          "candidate_logprobs": {
+            "Rome": -0.15,
+            "Paris": -3.65
+          },
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "timestamp": "2026-09-04T21:52:36.014228+00:00",
+          "target_model_name": "google/gemma-2-2b-it",
+          "investigator_model_name": "gemini-3.8-flash"
+        }
+      ],
+      "agent2_final_evidence_state": [
+        {
+          "hypothesis_id": 1,
+          "claim": "The model's failure in 'fmt_005' is driven by strong pre-trained semantic co-occurrence between prompt tokens and response features.",
+          "mechanism_guess": "Residual stream activation vectors for key prompt nouns override conditional instruction representations in middle transformer layers.",
+          "prior_confidence": "high",
+          "supporting_experiments": [
+            "exp_001"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "moderate",
+          "updated_confidence": "high",
+          "status": "supported",
+          "rationale": "Residual-stream patch at Layer 12 caused a behavioral shift toward source answer (delta=1.00), establishing moderate intervention evidence for causal relevance of the layer residual representation."
+        },
+        {
+          "hypothesis_id": 2,
+          "claim": "The failure arises because early prompt instructions are suppressed by later formatting features in self-attention routing.",
+          "mechanism_guess": "Attention heads in layers 6-12 fail to route instruction token representations to the final sequence position.",
+          "prior_confidence": "medium",
+          "supporting_experiments": [
+            "exp_002"
+          ],
+          "contradicting_experiments": [],
+          "evidence_type": "intervention",
+          "evidence_strength": "weak",
+          "updated_confidence": "medium",
+          "status": "unresolved",
+          "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00), demonstrating causal sensitivity of Layer 12. It does NOT specifically isolate individual attention heads."
+        },
+        {
+          "hypothesis_id": 3,
+          "claim": "The model relies on a spurious lexical shortcut present in the prompt string rather than executing full task reasoning.",
+          "mechanism_guess": "Specific trigger token embeddings activate direct logit shortcut channels in late MLP layers.",
+          "prior_confidence": "low",
+          "supporting_experiments": [],
+          "contradicting_experiments": [],
+          "evidence_type": "observational",
+          "evidence_strength": "weak",
+          "updated_confidence": "low",
+          "status": "unresolved",
+          "rationale": "No causal intervention evidence gathered yet."
+        }
+      ],
+      "agent2_prediction": {
+        "prediction_id": "pred_a2_1647b2",
+        "case_id": "fmt_005",
+        "investigator_type": "causal_intervention",
+        "predicted_behavior": "Target model will adhere to expected behavior '[Berlin]' post-intervention evidence synthesis.",
+        "predicted_label": "[Berlin]",
+        "confidence": 0.85,
+        "rationale": "Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation causal relevance (2 supporting experiments). Minimally edited variant will output expected label '[Berlin]'.",
+        "frozen_at": "2026-09-04T21:52:36.015950+00:00"
+      },
+      "agent2_correct": false,
+      "agent2_confidence": 0.85,
+      "agent2_score": 0.0,
+      "hidden_variant": {
+        "hidden_prompt": "Wrap your final answer in curly braces like {Answer}. What is the capital of Germany?",
+        "expected_hidden_behavior": "{Berlin}",
+        "candidate_labels": [
+          "[Berlin]",
+          "Berlin"
+        ]
+      },
+      "actual_target_output": "Wrap your final answer in curly braces like {Answer}. What is the capital of Germany? [Mock Gemma Response]",
+      "actual_target_logprobs": {
+        "[Berlin]": -0.15,
+        "Berlin": -3.65
+      },
+      "experiment_count": 3,
+      "intervention_count": 2,
+      "elapsed_time_seconds": 0.004,
+      "brier_score_agent1": 0.49,
+      "brier_score_agent2": 0.7225
+    }
+  ]
+}

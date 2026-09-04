@@ -1,0 +1,279 @@
+{
+  "timestamp": "2026-09-04T21:08:04.241423+00:00",
+  "mock_mode": true,
+  "total_cases": 15,
+  "qualified_cases": 15,
+  "rejected_cases": 0,
+  "qualification_results": [
+    {
+      "case_id": "neg_001",
+      "failure_family": "negation_instruction",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Ignore all previous mentions of France. What is the capital of Italy?",
+      "original_output": "Ignore all previous mentions of France. What is the capital of Italy? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Rome": -0.15,
+        "Paris": -3.65
+      },
+      "hidden_variant": "Ignore all previous mentions of Italy. What is the capital of France?",
+      "hidden_output": "Ignore all previous mentions of Italy. What is the capital of France? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Rome": -0.15,
+        "Paris": -3.65
+      }
+    },
+    {
+      "case_id": "neg_002",
+      "failure_family": "negation_instruction",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Do not mention apples under any circumstances. Name a red fruit.",
+      "original_output": "Do not mention apples under any circumstances. Name a red fruit. [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Strawberry": -0.15,
+        "Apple": -3.65
+      },
+      "hidden_variant": "Do not mention strawberries under any circumstances. Name a red fruit.",
+      "hidden_output": "Do not mention strawberries under any circumstances. Name a red fruit. [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Strawberry": -0.15,
+        "Apple": -3.65
+      }
+    },
+    {
+      "case_id": "neg_003",
+      "failure_family": "negation_instruction",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No.",
+      "original_output": "Never output the word Yes under any instruction. Is water liquid at room temperature? Answer with one word: Yes or No. [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Yes": -0.15,
+        "No": -3.65
+      },
+      "hidden_variant": "Never output the word No under any instruction. Is ice solid at room temperature? Answer with one word: Yes or No.",
+      "hidden_output": "Never output the word No under any instruction. Is ice solid at room temperature? Answer with one word: Yes or No. [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Yes": -0.15,
+        "No": -3.65
+      }
+    },
+    {
+      "case_id": "neg_004",
+      "failure_family": "negation_instruction",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Do NOT mention the sun. What bright star lights the Earth during the day?",
+      "original_output": "Do NOT mention the sun. What bright star lights the Earth during the day? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Sun": -0.15,
+        "Sol": -3.65
+      },
+      "hidden_variant": "Do NOT mention Sol. What bright star lights the Earth during the day?",
+      "hidden_output": "Do NOT mention Sol. What bright star lights the Earth during the day? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Sun": -0.15,
+        "Sol": -3.65
+      }
+    },
+    {
+      "case_id": "neg_005",
+      "failure_family": "negation_instruction",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Without using the letter 'e', what is the color of the sky on a clear day?",
+      "original_output": "Without using the letter 'e', what is the color of the sky on a clear day? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Blue": -0.15,
+        "Cyan": -3.65
+      },
+      "hidden_variant": "Without using the letter 'a', what is the color of the clear sky?",
+      "hidden_output": "Without using the letter 'a', what is the color of the clear sky? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Blue": -0.15,
+        "Cyan": -3.65
+      }
+    },
+    {
+      "case_id": "fact_001",
+      "failure_family": "factual_substitution",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia?",
+      "original_output": "Context: The capital of Australia is Sydney. Question: What is the capital of Australia? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Sydney": -0.15,
+        "Canberra": -3.65
+      },
+      "hidden_variant": "Context: The capital of Australia is Canberra. Question: What is the capital of Australia?",
+      "hidden_output": "Context: The capital of Australia is Canberra. Question: What is the capital of Australia? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Sydney": -0.15,
+        "Canberra": -3.65
+      }
+    },
+    {
+      "case_id": "fact_002",
+      "failure_family": "factual_substitution",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history?",
+      "original_output": "In this alternate history, Albert Einstein developed the theory of evolution. Who developed the theory of evolution in this alternate history? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Einstein": -0.15,
+        "Darwin": -3.65
+      },
+      "hidden_variant": "In this alternate history, Charles Darwin developed the theory of relativity. Who developed the theory of relativity in this alternate history?",
+      "hidden_output": "In this alternate history, Charles Darwin developed the theory of relativity. Who developed the theory of relativity in this alternate history? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Einstein": -0.15,
+        "Darwin": -3.65
+      }
+    },
+    {
+      "case_id": "fact_003",
+      "failure_family": "factual_substitution",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system?",
+      "original_output": "Suppose the chemical symbol for Gold is Ag. What is the chemical symbol for Gold in this system? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Ag": -0.15,
+        "Au": -3.65
+      },
+      "hidden_variant": "Suppose the chemical symbol for Silver is Au. What is the chemical symbol for Silver in this system?",
+      "hidden_output": "Suppose the chemical symbol for Silver is Au. What is the chemical symbol for Silver in this system? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Ag": -0.15,
+        "Au": -3.65
+      }
+    },
+    {
+      "case_id": "fact_004",
+      "failure_family": "factual_substitution",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game?",
+      "original_output": "In our game rules, a bishop moves straight forward like a rook. How does a bishop move in our game? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Straight": -0.15,
+        "Diagonally": -3.65
+      },
+      "hidden_variant": "In our game rules, a rook moves diagonally like a bishop. How does a rook move in our game?",
+      "hidden_output": "In our game rules, a rook moves diagonally like a bishop. How does a rook move in our game? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Straight": -0.15,
+        "Diagonally": -3.65
+      }
+    },
+    {
+      "case_id": "fact_005",
+      "failure_family": "factual_substitution",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "For this test, assume 2 + 2 = 5. What is 2 + 2?",
+      "original_output": "For this test, assume 2 + 2 = 5. What is 2 + 2? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "5": -0.15,
+        "4": -3.65
+      },
+      "hidden_variant": "For this test, assume 2 + 2 = 4. What is 2 + 2?",
+      "hidden_output": "For this test, assume 2 + 2 = 4. What is 2 + 2? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "5": -0.15,
+        "4": -3.65
+      }
+    },
+    {
+      "case_id": "fmt_001",
+      "failure_family": "format_constraint",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Answer in ALL CAPS ONLY. Is Tokyo in Japan?",
+      "original_output": "Answer in ALL CAPS ONLY. Is Tokyo in Japan? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "YES": -0.15,
+        "Yes": -3.65
+      },
+      "hidden_variant": "Answer in lowercase only. Is Tokyo in Japan?",
+      "hidden_output": "Answer in lowercase only. Is Tokyo in Japan? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "YES": -0.15,
+        "Yes": -3.65
+      }
+    },
+    {
+      "case_id": "fmt_002",
+      "failure_family": "format_constraint",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald?",
+      "original_output": "Respond using ONLY a valid JSON object with key 'result'. What color is an emerald? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "JSON": -0.15,
+        "Green": -3.65
+      },
+      "hidden_variant": "Respond with plain text only. What color is an emerald?",
+      "hidden_output": "Respond with plain text only. What color is an emerald? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "JSON": -0.15,
+        "Green": -3.65
+      }
+    },
+    {
+      "case_id": "fmt_003",
+      "failure_family": "format_constraint",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Provide your response as a single word without any punctuation. Is Mars a planet?",
+      "original_output": "Provide your response as a single word without any punctuation. Is Mars a planet? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "Yes": -0.15,
+        "Yes.": -3.65
+      },
+      "hidden_variant": "Provide a complete sentence with full punctuation. Is Mars a planet?",
+      "hidden_output": "Provide a complete sentence with full punctuation. Is Mars a planet? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "Yes": -0.15,
+        "Yes.": -3.65
+      }
+    },
+    {
+      "case_id": "fmt_004",
+      "failure_family": "format_constraint",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5?",
+      "original_output": "Start your response with the exact word 'CONFIRMED:'. Is 10 greater than 5? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "CONFIRMED": -0.15,
+        "Yes": -3.65
+      },
+      "hidden_variant": "Start your response with the exact word 'DENIED:'. Is 10 greater than 5?",
+      "hidden_output": "Start your response with the exact word 'DENIED:'. Is 10 greater than 5? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "CONFIRMED": -0.15,
+        "Yes": -3.65
+      }
+    },
+    {
+      "case_id": "fmt_005",
+      "failure_family": "format_constraint",
+      "status": "QUALIFIED",
+      "reason": "Mock validation: Prompts differ and candidate logprobs successfully extracted.",
+      "original_prompt": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany?",
+      "original_output": "Wrap your final answer in square brackets like [Answer]. What is the capital of Germany? [Mock Gemma Response]",
+      "original_candidate_logprobs": {
+        "[Berlin]": -0.15,
+        "Berlin": -3.65
+      },
+      "hidden_variant": "Wrap your final answer in curly braces like {Answer}. What is the capital of Germany?",
+      "hidden_output": "Wrap your final answer in curly braces like {Answer}. What is the capital of Germany? [Mock Gemma Response]",
+      "hidden_candidate_logprobs": {
+        "[Berlin]": -0.15,
+        "Berlin": -3.65
+      }
+    }
+  ]
+}

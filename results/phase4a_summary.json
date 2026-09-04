@@ -1,0 +1,53 @@
+{
+  "timestamp": "2026-09-04T21:52:36.016247+00:00",
+  "target_model_name": "google/gemma-2-2b-it",
+  "investigator_model_name": "gemini-3.8-flash",
+  "execution_mode": "mock",
+  "total_cases": 15,
+  "agent1_accuracy": 0.0667,
+  "agent2_accuracy": 0.0667,
+  "accuracy_delta": 0.0,
+  "contingency_breakdown": {
+    "both_correct": 1,
+    "agent2_only_correct": 0,
+    "agent1_only_correct": 0,
+    "both_incorrect": 14
+  },
+  "brier_score": {
+    "agent1_mean": 0.4633,
+    "agent2_mean": 0.6758,
+    "brier_delta": 0.2125
+  },
+  "accuracy_by_family": {
+    "negation_instruction": {
+      "total_cases": 5,
+      "agent1_correct": 0,
+      "agent2_correct": 0,
+      "agent1_accuracy": 0.0,
+      "agent2_accuracy": 0.0,
+      "accuracy_delta": 0.0
+    },
+    "factual_substitution": {
+      "total_cases": 5,
+      "agent1_correct": 0,
+      "agent2_correct": 0,
+      "agent1_accuracy": 0.0,
+      "agent2_accuracy": 0.0,
+      "accuracy_delta": 0.0
+    },
+    "format_constraint": {
+      "total_cases": 5,
+      "agent1_correct": 1,
+      "agent2_correct": 1,
+      "agent1_accuracy": 0.2,
+      "agent2_accuracy": 0.2,
+      "accuracy_delta": 0.0
+    }
+  },
+  "trajectory_totals": {
+    "total_experiments_executed": 45,
+    "total_interventions_executed": 30,
+    "avg_experiments_per_case": 3.0
+  },
+  "total_elapsed_seconds": 0.0869
+}

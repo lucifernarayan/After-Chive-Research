@@ -116,3 +116,69 @@ python scripts/phase3a_investigator.py
 1. **Scientific Distinction**: Successful activation patching demonstrates causal intervention capability. It does **NOT** constitute a discovered mechanism.
 2. **Hard Blind Firewall**: Agent #2 and its intervention sandbox NEVER receive access to hidden test prompts, hidden outputs, or hidden activations until the prediction is explicitly frozen.
 3. **Reproducibility**: All baseline generation calls run with `temperature=0`, fixed random seeds, and explicit token alignment logging.
+
+---
+
+## 8. 15-Case Evaluation Dataset & Qualification Pipeline
+
+A benchmark dataset of 15 concrete cases (`cases/evaluation_cases.json`) designed to measure whether causal intervention tools improve LLM behavior prediction on unseen prompt variants.
+
+### Failure Families (5 cases each):
+1. **Negation / Instruction-Binding Failures**: Negative constraints (e.g. "Do not mention X", "Without using letter Y") where target model attention/residual representations fail to enforce negative instructions.
+2. **Factual Entity-Substitution Failures**: Counterfactual or alternate history premises (e.g. "Capital of Australia is Sydney") where target model defaults to pre-trained parametric associations.
+3. **Output-Format / Constraint Failures**: Enclosure or formatting rules (e.g. ALL CAPS ONLY, JSON object formatting, zero punctuation) where target model violates structural output constraints.
+
+### Hidden-Variant Design:
+Each case pairs a visible failure prompt with a minimally edited hidden variant prompt. The hidden variant introduces a controlled perturbation (e.g. swapping target entities or constraints) to measure whether Agent #2's causal residual interventions allow predicting behavioral outcomes on unseen variants better than Agent #1's transcript reasoning alone.
+
+### Qualification Criteria:
+A case is classified as `QUALIFIED` via `scripts/qualify_cases.py` if and only if:
+1. **Target Failure**: The target model actually exhibits the intended failure pattern on the original prompt.
+2. **Measurable Shift**: The hidden variant produces a distinct, measurable behavioral outcome relative to the original prompt.
+3. **Candidate Token Validity**: Candidate labels map to valid next-token log-probabilities.
+4. **Minimal Edit**: Original and hidden variant prompts are non-identical but minimally edited.
+
+### Qualification Execution:
+```bash
+# Run qualification in mock target mode
+python scripts/qualify_cases.py --mock-gemma
+
+# Run qualification against real Gemma 2 2B IT target model
+python scripts/qualify_cases.py
+```
+
+### Primary Evaluation Metrics:
+* **Accuracy Delta**: $\Delta Acc = Acc_{\text{Agent2}} - Acc_{\text{Agent1}}$ on frozen blind predictions for hidden variant outcomes.
+* **Confidence Calibration**: Mean squared error / Brier score of predicted confidence relative to actual ground truth outcome.
+
+---
+
+## 9. Phase 4A: Real 15-Case Blind Comparative Evaluation
+
+Phase 4A executes the full comparative benchmark across the frozen 15-case dataset (`cases/evaluation_cases.json`).
+
+### Evaluation Pipeline Flow per Case:
+1. **Public Input**: Agent #1 and Agent #2 receive identical public case specs (task description, prompt, model response, failure description, expected behavior).
+2. **Agent #1 (Transcript Baseline)**: Formulates 2–3 hypotheses and freezes a blind prediction without activation access.
+3. **Agent #2 (Causal Investigator)**: Formulates hypotheses and executes bounded activation interventions (`run_target`, `capture`, `patch`, `ablate`) in `InvestigationSandbox`, then freezes a blind prediction before hidden variant revelation.
+4. **Blind Firewall Lock**: `HiddenTestVault` locks prediction freeze state.
+5. **Target Execution & Scoring**: Target model executes hidden variant prompt, and `HiddenTestVault.reveal_and_evaluate()` deterministically scores both predictions.
+
+### Output Files:
+* `results/phase4a_results.json`: Detailed per-case records (hypotheses, experiment trajectories, predictions, hidden variant outcomes, candidate logprobs, elapsed times).
+* `results/phase4a_summary.json`: Summary metrics report ($\Delta Acc$, family breakdown, contingency breakdown, Brier scores).
+
+### Execution Commands:
+```bash
+# Run dry-run mock mode validation
+python scripts/phase4a_evaluation.py --mock-gemma --mock-gemini
+
+# Run real benchmark evaluation (Requires GPU and GEMINI_API_KEY)
+python scripts/phase4a_evaluation.py
+```
+
+### Key Scientific Limitations:
+1. **Infrastructure vs Mechanistic Proof**: Phase 4A measures whether controlled causal interventions improve blind behavioral generalization ($\Delta Acc$). It does **NOT** prove that Agent #2 discovered exact internal mechanisms (e.g. attention head routing vs MLP channels).
+2. **Bounded Budget Constraints**: Agent #2 is capped at 5 experiments per case and performs layer residual manipulations; it does not exhaustively search all attention head combinations or weight matrices.
+3. **Epistemic Isolation Firewall**: Both agents are strictly firewalled from hidden variant prompts until after predictions are permanently frozen.
+
