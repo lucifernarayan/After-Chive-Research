@@ -1,5 +1,6 @@
 """
 Phase 2 Execution Script: Transcript-Only Gemini Hypothesis Agent (Agent #1).
+Default Model: gemini-3.8-flash
 
 Executes hypothesis generation across synthetic validation cases, evaluates schema compliance,
 falsifiability, distinctness, and saves results JSON.
@@ -17,7 +18,7 @@ from agents.hypothesis_agent import HypothesisGeneratorAgent
 from experiments.hypothesis_experiment import HypothesisExperimentRunner
 
 
-def run_phase2(model_name="gemini-2.5-pro", mock=False):
+def run_phase2(model_name="gemini-3.8-flash", mock=False):
     print("=" * 80)
     print("  PROJECT: CAUSAL MECHANISTIC INVESTIGATOR - PHASE 2 HYPOTHESIS AGENT")
     print("=" * 80)
@@ -74,7 +75,7 @@ def run_phase2(model_name="gemini-2.5-pro", mock=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Phase 2 Hypothesis Agent Execution")
-    parser.add_argument("--model", type=str, default="gemini-2.5-pro", help="Gemini model ID")
+    parser.add_argument("--model", type=str, default="gemini-3.8-flash", help="Gemini model ID")
     parser.add_argument("--mock", action="store_true", help="Run in dry-run mock mode without calling Gemini API")
     args = parser.parse_args()
 

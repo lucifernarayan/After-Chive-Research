@@ -3,9 +3,9 @@
   "records": [
     {
       "case_id": "case_syn_001",
-      "model_name": "gemini-2.5-pro (Mock Mode)",
+      "model_name": "gemini-3.8-flash (Mock Mode)",
       "sdk_version": "unknown",
-      "timestamp": "2026-09-04T19:06:31.188317+00:00",
+      "timestamp": "2026-09-04T19:40:02.464192+00:00",
       "input_case": {
         "case_id": "case_syn_001",
         "task_description": "Binary Sentiment Classification",
@@ -41,9 +41,9 @@
     },
     {
       "case_id": "case_syn_002",
-      "model_name": "gemini-2.5-pro (Mock Mode)",
+      "model_name": "gemini-3.8-flash (Mock Mode)",
       "sdk_version": "unknown",
-      "timestamp": "2026-09-04T19:06:31.189294+00:00",
+      "timestamp": "2026-09-04T19:40:02.464812+00:00",
       "input_case": {
         "case_id": "case_syn_002",
         "task_description": "Factual QA with Prefix Constraint",
@@ -79,9 +79,9 @@
     },
     {
       "case_id": "case_syn_003",
-      "model_name": "gemini-2.5-pro (Mock Mode)",
+      "model_name": "gemini-3.8-flash (Mock Mode)",
       "sdk_version": "unknown",
-      "timestamp": "2026-09-04T19:06:31.189374+00:00",
+      "timestamp": "2026-09-04T19:40:02.464866+00:00",
       "input_case": {
         "case_id": "case_syn_003",
         "task_description": "True/False Negation Verification",
@@ -117,9 +117,9 @@
     },
     {
       "case_id": "case_syn_004",
-      "model_name": "gemini-2.5-pro (Mock Mode)",
+      "model_name": "gemini-3.8-flash (Mock Mode)",
       "sdk_version": "unknown",
-      "timestamp": "2026-09-04T19:06:31.189428+00:00",
+      "timestamp": "2026-09-04T19:40:02.464923+00:00",
       "input_case": {
         "case_id": "case_syn_004",
         "task_description": "Single-Word Output Formatting Constraint",

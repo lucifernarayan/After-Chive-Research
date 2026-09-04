@@ -1,6 +1,7 @@
 """
 Agent #1: Transcript-Only Gemini Hypothesis Generator.
 Uses Google GenAI SDK to produce structured, falsifiable causal hypotheses from failure transcripts.
+Default Model: gemini-3.8-flash
 """
 
 import os
@@ -23,8 +24,8 @@ class HypothesisGeneratorAgent:
 
     def __init__(
         self, 
-        model_name: str = "gemini-2.5-pro", 
-        fallback_model: str = "gemini-2.5-flash",
+        model_name: str = "gemini-3.8-flash", 
+        fallback_model: str = "gemini-3.8-flash",
         mock: bool = False
     ):
         self.model_name = model_name
@@ -48,7 +49,6 @@ class HypothesisGeneratorAgent:
             if api_key and len(api_key.strip()) > 0:
                 self.client = genai.Client(api_key=api_key)
             else:
-                # Client might instantiate default environment key or raise
                 self.client = genai.Client()
         except ImportError:
             print("  [NOTICE] google-genai SDK not installed. Defaulting to Mock Hypothesis Generator.")
@@ -126,7 +126,6 @@ class HypothesisGeneratorAgent:
                 contents=user_content,
                 config=config
             )
-            # Parse response into HypothesisSet
             if hasattr(response, "parsed") and response.parsed is not None:
                 hyp_set = response.parsed
             else:

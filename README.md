@@ -6,7 +6,7 @@ Preliminary AI safety & mechanistic interpretability research prototype investig
 ## 1. Project Specifications
 
 * **Target Model**: `google/gemma-2-2b-it` (Standardized for N≈15 preliminary benchmark).
-* **Investigator Model**: Gemini 2.5 Pro / Flash via Google GenAI SDK (`google-genai`).
+* **Investigator Model**: `gemini-3.8-flash` via Google GenAI SDK (`google-genai`).
 * **Experimental Conditions**:
   1. **Condition A**: Transcript-Only Baseline (No activation access, no intervention tools).
   2. **Condition B**: Causal-Intervention Investigator (Residual-stream activation patching, controlled sandbox, hard blind-prediction firewall).
@@ -56,7 +56,7 @@ python scripts/phase1_patching.py --mock
 
 ## 5. Phase 2: Transcript-Only Gemini Hypothesis Agent (Agent #1)
 
-Phase 2 implements Agent #1 (`HypothesisGeneratorAgent`), a transcript-only LLM hypothesis generator using Gemini 2.5 Pro via the `google-genai` SDK.
+Phase 2 implements Agent #1 (`HypothesisGeneratorAgent`), a transcript-only LLM hypothesis generator using `gemini-3.8-flash` via the `google-genai` SDK.
 
 ### Features:
 - **Strict Epistemic Isolation**: Zero tool access, zero internal activation access, zero hidden test access.
@@ -70,7 +70,7 @@ Phase 2 implements Agent #1 (`HypothesisGeneratorAgent`), a transcript-only LLM 
 python scripts/phase2_hypothesis.py --mock
 
 # Real Gemini API execution
-python scripts/phase2_hypothesis.py --model gemini-2.5-pro
+python scripts/phase2_hypothesis.py --model gemini-3.8-flash
 ```
 
 ---
