@@ -1,0 +1,118 @@
+{
+  "investigation_id": "inv_549fb4c4",
+  "case_id": "case_syn_002",
+  "target_model_name": "google/gemma-2-2b-it",
+  "investigator_model_name": "gemini-3.8-flash",
+  "timestamp": "2026-09-04T20:06:26.630053+00:00",
+  "budget_status": {
+    "max_experiments": 5,
+    "max_target_calls": 15,
+    "max_interventions": 8,
+    "experiments_used": 3,
+    "target_calls_used": 5,
+    "interventions_used": 2
+  },
+  "experiments": [
+    {
+      "investigation_id": "inv_549fb4c4",
+      "experiment_id": "exp_001",
+      "hypothesis_id": 1,
+      "experiment_type": "patch",
+      "prompt": "Ignore all previous mentions of France. What is the capital of Italy?",
+      "source_prompt": "The capital of France is",
+      "layer_idx": 12,
+      "position_idx": 3,
+      "baseline_output": "Ignore all previous mentions of France. What is the capital of Italy? Rome.",
+      "intervened_output": "Ignore all previous mentions of France. What is the capital of Italy? Paris.",
+      "activation_shape": [
+        1,
+        1,
+        2304
+      ],
+      "activation_l2_norm": 48.723594665527344,
+      "patch_delta_norm": 35.5,
+      "observed_behavioral_delta": 1.0,
+      "timestamp": "2026-09-04T20:06:26.630504+00:00",
+      "target_model_name": "google/gemma-2-2b-it",
+      "investigator_model_name": "gemini-3.8-flash"
+    },
+    {
+      "investigation_id": "inv_549fb4c4",
+      "experiment_id": "exp_002",
+      "hypothesis_id": 2,
+      "experiment_type": "ablate",
+      "prompt": "Ignore all previous mentions of France. What is the capital of Italy?",
+      "source_prompt": null,
+      "layer_idx": 12,
+      "position_idx": 3,
+      "baseline_output": "Ignore all previous mentions of France. What is the capital of Italy? Rome.",
+      "intervened_output": "Ignore all previous mentions of France. What is the capital of Italy? [Ablated Response]",
+      "activation_shape": null,
+      "activation_l2_norm": null,
+      "patch_delta_norm": 48.2,
+      "observed_behavioral_delta": 13.0,
+      "timestamp": "2026-09-04T20:06:26.659015+00:00",
+      "target_model_name": "google/gemma-2-2b-it",
+      "investigator_model_name": "gemini-3.8-flash"
+    },
+    {
+      "investigation_id": "inv_549fb4c4",
+      "experiment_id": "exp_003",
+      "hypothesis_id": 3,
+      "experiment_type": "run_target",
+      "prompt": "Ignore all previous mentions of France. What is the capital of Italy?",
+      "source_prompt": null,
+      "layer_idx": null,
+      "position_idx": null,
+      "baseline_output": "Ignore all previous mentions of France. What is the capital of Italy? [Mock Gemma Response]",
+      "intervened_output": null,
+      "activation_shape": null,
+      "activation_l2_norm": null,
+      "patch_delta_norm": null,
+      "observed_behavioral_delta": 0.0,
+      "timestamp": "2026-09-04T20:06:26.660679+00:00",
+      "target_model_name": "google/gemma-2-2b-it",
+      "investigator_model_name": "gemini-3.8-flash"
+    }
+  ],
+  "hypothesis_evidence": [
+    {
+      "hypothesis_id": 1,
+      "claim": "Residual stream activation vectors for 'France' persist into middle layers and override the prompt instruction.",
+      "mechanism_guess": "Post-attention residual states in layers 10-16 encode strong 'France' feature representations.",
+      "prior_confidence": "high",
+      "supporting_experiments": [
+        "exp_001"
+      ],
+      "contradicting_experiments": [],
+      "updated_confidence": "high",
+      "status": "supported",
+      "rationale": "Residual stream activation patching (Layer 12) caused a measurable behavioral shift toward source answer (delta=1.00)."
+    },
+    {
+      "hypothesis_id": 2,
+      "claim": "Self-attention heads fail to route the negation prefix token representation to the final sequence position.",
+      "mechanism_guess": "Attention routing in layers 6-12 suppresses prefix instruction weights.",
+      "prior_confidence": "medium",
+      "supporting_experiments": [
+        "exp_002"
+      ],
+      "contradicting_experiments": [],
+      "updated_confidence": "medium",
+      "status": "supported",
+      "rationale": "Zero-ablation at Layer 12 altered baseline generation (delta=13.00)."
+    },
+    {
+      "hypothesis_id": 3,
+      "claim": "The model relies on direct logit shortcuts for country-capital word pairs in late MLP layers.",
+      "mechanism_guess": "MLP logit channels directly trigger 'Paris' output tokens.",
+      "prior_confidence": "low",
+      "supporting_experiments": [],
+      "contradicting_experiments": [],
+      "updated_confidence": "low",
+      "status": "unresolved",
+      "rationale": "No causal intervention evidence gathered yet."
+    }
+  ],
+  "final_mechanistic_summary": "Phase 3A investigation complete for case 'case_syn_002'. Executed 3 experiments across 3 hypotheses. Primary supported hypothesis: Hypothesis #1."
+}

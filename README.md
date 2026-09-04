@@ -17,16 +17,16 @@ Preliminary AI safety & mechanistic interpretability research prototype investig
 
 ```
 project/
-├── agents/            # Agent #1 (Hypothesis: agents/hypothesis_agent.py)
-├── target/            # Target model loader, inference wrapper, & activation hooks
-├── interventions/     # Modular intervention primitives (interventions/patching.py)
-├── experiments/       # Case controller & validation experiments (experiments/hypothesis_experiment.py)
-├── security/          # Hidden test vault, blind firewall, leakage checker
-├── schemas/           # Pydantic schemas (schemas/hypotheses.py, schemas/patching.py)
+├── agents/            # Agent #1 (Hypothesis) & Agent #2 (Causal Investigator: agents/causal_investigator.py)
+├── target/            # Target model loader (target/gemma.py) & activation hooks
+├── interventions/     # Patching engine & sandbox (interventions/sandbox.py, interventions/patching.py)
+├── experiments/       # Case controller & validation suites (experiments/investigation_experiment.py)
+├── security/          # Blind firewall, leakage checker
+├── schemas/           # Pydantic schemas (schemas/investigation.py, schemas/hypotheses.py, schemas/patching.py)
 ├── cases/             # Dataset of benchmark cases & variant suites (~15 cases)
-├── results/           # Run logs, JSON outputs, & evaluation reports
-├── notebooks/         # Google Colab verification & experiment notebooks
-├── scripts/           # Execution scripts (Phase 0, Phase 1, Phase 2 verification)
+├── results/           # Run logs, JSON outputs, & evaluation reports (results/phase3a_investigation_log.json)
+├── notebooks/         # Google Colab notebooks (notebooks/phase3a_investigator.ipynb)
+├── scripts/           # Execution scripts (scripts/phase3a_investigator.py)
 ├── requirements.txt   # Locked Python dependencies
 ├── phase0_verification.py # Top-level Phase 0 verification runner
 └── README.md          # Project documentation
@@ -58,24 +58,41 @@ python scripts/phase1_patching.py --mock
 
 Phase 2 implements Agent #1 (`HypothesisGeneratorAgent`), a transcript-only LLM hypothesis generator using `gemini-3.8-flash` via the `google-genai` SDK.
 
-### Features:
-- **Strict Epistemic Isolation**: Zero tool access, zero internal activation access, zero hidden test access.
-- **Mechanism-Level Specificity**: Rejects vague claims ("model was confused"). Requires hypotheses referring to specific mechanisms (spurious features, instruction persistence, semantic co-occurrence bias).
-- **Structured Pydantic Output**: Outputs `HypothesisSet` schema containing 2-3 falsifiable hypotheses and a `most_likely` index.
-- **Privacy Audit**: `GEMINI_API_KEY` accessed securely via environment variables; credentials are never printed or saved to logs.
-
-### Running Phase 2:
 ```bash
-# Dry-run mock mode
 python scripts/phase2_hypothesis.py --mock
-
-# Real Gemini API execution
-python scripts/phase2_hypothesis.py --model gemini-3.8-flash
 ```
 
 ---
 
-## 6. Methodological & Scientific Rules
+## 6. Phase 3A: Causal Investigator Agent (Agent #2) & Investigation Sandbox
+
+Phase 3A implements Agent #2 (`CausalInvestigatorAgent`) and `InvestigationSandbox`.
+
+### Architecture & Security Controls:
+1. **Explicit Tool Boundary**: Agent #2 has **NO** arbitrary python, shell, or file read execution capabilities (`exec`, `eval`, `subprocess`, `os`, `open` are NOT exposed).
+2. **Exposed Tools Only**:
+   - `run_target(prompt)`
+   - `capture_activation(prompt, layer_idx, position)`
+   - `patch_activation(source_prompt, target_prompt, layer_idx, source_pos, target_pos)`
+   - `ablate_activation(prompt, layer_idx, position)`
+   - `compare_outputs(baseline_text, intervened_text, candidate_label)`
+3. **Investigation Budget**: Enforces strict budgets (`max_experiments=5`, `max_target_calls=15`, `max_interventions=8`). Halts cleanly when budget is exhausted.
+4. **Causal vs Observational Evidence**: Distinguishes observational activation correlation from causal intervention evidence (residual stream patching and zero-ablation). Updates hypothesis statuses to `supported`, `weakened`, or `unresolved` without declaring hypotheses "proven".
+5. **Epistemic Isolation Boundary**: ZERO hidden-test prompts, outcomes, or metadata accessible to Agent #2.
+6. **PHASE 3B STATUS**: **NOT IMPLEMENTED YET** (Hidden-test vault, blind prediction, freezing, and scoring belong to future phases).
+
+### Running Phase 3A Validation:
+```bash
+# Dry-run mock mode
+python scripts/phase3a_investigator.py --mock-gemma --mock-gemini
+
+# Full execution (Requires CUDA GPU and GEMINI_API_KEY)
+python scripts/phase3a_investigator.py
+```
+
+---
+
+## 7. Methodological & Scientific Rules
 
 1. **Scientific Distinction**: Successful activation patching demonstrates causal intervention capability. It does **NOT** constitute a discovered mechanism.
 2. **Hard Blind Firewall**: Agent #2 and its intervention sandbox NEVER receive access to hidden test prompts, hidden outputs, or hidden activations until the prediction is explicitly frozen.
