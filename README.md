@@ -8,8 +8,8 @@ Preliminary AI safety & mechanistic interpretability research prototype investig
 * **Target Model**: `google/gemma-2-2b-it` (Standardized for N≈15 preliminary benchmark).
 * **Investigator Model**: `gemini-3.8-flash` via Google GenAI SDK (`google-genai`).
 * **Experimental Conditions**:
-  1. **Condition A**: Transcript-Only Baseline (No activation access, no intervention tools).
-  2. **Condition B**: Causal-Intervention Investigator (Residual-stream activation patching, controlled sandbox, hard blind-prediction firewall).
+  1. **Condition A**: Transcript-Only Baseline (Agent #1: No activation access, no intervention tools).
+  2. **Condition B**: Causal-Intervention Investigator (Agent #2: Residual-stream activation patching, controlled sandbox, hard blind-prediction firewall).
 
 ---
 
@@ -17,14 +17,14 @@ Preliminary AI safety & mechanistic interpretability research prototype investig
 
 ```
 project/
-├── agents/            # Agent #1 (Hypothesis) & Agent #2 (Causal Investigator: agents/causal_investigator.py)
+├── agents/            # Agent #1 (agents/hypothesis_agent.py) & Agent #2 (agents/causal_investigator.py)
 ├── target/            # Target model loader (target/gemma.py) & activation hooks
 ├── interventions/     # Patching engine & sandbox (interventions/sandbox.py, interventions/patching.py)
 ├── experiments/       # Case controller & validation suites (experiments/investigation_experiment.py)
-├── security/          # Blind firewall, leakage checker
-├── schemas/           # Pydantic schemas (schemas/investigation.py, schemas/hypotheses.py, schemas/patching.py)
+├── security/          # Blind firewall & hidden test vault (security/hidden_vault.py)
+├── schemas/           # Pydantic schemas (schemas/predictions.py, schemas/investigation.py, schemas/hypotheses.py)
 ├── cases/             # Dataset of benchmark cases & variant suites (~15 cases)
-├── results/           # Run logs, JSON outputs, & evaluation reports (results/phase3a_investigation_log.json)
+├── results/           # Run logs, JSON outputs, & evaluation reports (results/phase3a_comparative_eval.json)
 ├── notebooks/         # Google Colab notebooks (notebooks/phase3a_investigator.ipynb)
 ├── scripts/           # Execution scripts (scripts/phase3a_investigator.py)
 ├── requirements.txt   # Locked Python dependencies
@@ -64,22 +64,41 @@ python scripts/phase2_hypothesis.py --mock
 
 ---
 
-## 6. Phase 3A: Causal Investigator Agent (Agent #2) & Investigation Sandbox
+## 6. Phase 3A: Symmetric Comparative Pipeline & Investigation Sandbox
 
-Phase 3A implements Agent #2 (`CausalInvestigatorAgent`) and `InvestigationSandbox`.
+Phase 3A implements the symmetric comparative prediction and scoring pipeline:
+
+```
+                SAME FAILURE CASE
+                       |
+                Agent #1 hypotheses
+                       |
+             +---------+---------+
+             |                   |
+    Transcript-only       Causal investigator
+         branch                  |
+             |             bounded experiments
+             |                   |
+      FREEZE PREDICTION    FREEZE PREDICTION
+             |                   |
+             +---------+---------+
+                       |
+                SAME HIDDEN VARIANT
+                       |
+                 SAME SCORER
+                       |
+          +------------+------------+
+          |                         |
+    Agent #1 score             Agent #2 score
+```
 
 ### Architecture & Security Controls:
-1. **Explicit Tool Boundary**: Agent #2 has **NO** arbitrary python, shell, or file read execution capabilities (`exec`, `eval`, `subprocess`, `os`, `open` are NOT exposed).
-2. **Exposed Tools Only**:
-   - `run_target(prompt)`
-   - `capture_activation(prompt, layer_idx, position)`
-   - `patch_activation(source_prompt, target_prompt, layer_idx, source_pos, target_pos)`
-   - `ablate_activation(prompt, layer_idx, position)`
-   - `compare_outputs(baseline_text, intervened_text, candidate_label)`
-3. **Investigation Budget**: Enforces strict budgets (`max_experiments=5`, `max_target_calls=15`, `max_interventions=8`). Halts cleanly when budget is exhausted.
-4. **Causal vs Observational Evidence**: Distinguishes observational activation correlation from causal intervention evidence (residual stream patching and zero-ablation). Updates hypothesis statuses to `supported`, `weakened`, or `unresolved` without declaring hypotheses "proven".
-5. **Epistemic Isolation Boundary**: ZERO hidden-test prompts, outcomes, or metadata accessible to Agent #2.
-6. **PHASE 3B STATUS**: **NOT IMPLEMENTED YET** (Hidden-test vault, blind prediction, freezing, and scoring belong to future phases).
+1. **Symmetric Prediction Schema**: Agent #1 and Agent #2 produce structurally identical `BlindPrediction` objects (`prediction_id`, `case_id`, `investigator_type`, `predicted_behavior`, `predicted_label`, `confidence`, `rationale`, `frozen_at`).
+2. **Epistemic Isolation Firewall**: Neither prediction function accepts `hidden_variant` objects. Agent #2 trajectory does NOT leak into Agent #1 context. Hidden test outcomes are revealed ONLY to `HiddenTestVault.reveal_and_evaluate()` after predictions are permanently frozen.
+3. **Explicit Tool Boundary**: Agent #2 has **NO** arbitrary python, shell, or file read execution capabilities (`run_target`, `capture_activation`, `patch_activation`, `ablate_activation`, `compare_outputs` only).
+4. **Investigation Budget**: Enforces strict budgets (`max_experiments=5`, `max_target_calls=15`, `max_interventions=8`).
+5. **Deterministic Scorer Engine**: `HiddenTestVault` deterministically evaluates Agent #1 and Agent #2 predictions against actual hidden variant label (`agent1_correct`, `agent2_correct`, `agent1_score`, `agent2_score`).
+6. **PHASE 3B STATUS**: **NOT IMPLEMENTED YET** (Hidden-test dataset scaling and benchmark evaluation belong to future phases).
 
 ### Running Phase 3A Validation:
 ```bash

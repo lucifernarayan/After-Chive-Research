@@ -1,11 +1,13 @@
 """
 Agent #2: Causal Investigator Agent.
-Uses Gemini 3.8 Flash to evaluate Agent #1 hypotheses by executing controlled activation experiments in InvestigationSandbox.
+Uses Gemini 3.8 Flash to evaluate Agent #1 hypotheses by executing controlled activation experiments in InvestigationSandbox,
+and formulates a frozen blind prediction prior to hidden variant revelation.
 """
 
 import os
 import sys
 import time
+import uuid
 import datetime
 from typing import List, Dict, Tuple, Optional, Any
 from schemas.hypotheses import FailureCase, HypothesisSet, Hypothesis
@@ -16,6 +18,7 @@ from schemas.investigation import (
     InvestigationRecord,
     InvestigationBudget
 )
+from schemas.predictions import BlindPrediction
 from interventions.sandbox import InvestigationSandbox, BudgetExhaustedError
 
 
@@ -167,29 +170,91 @@ class CausalInvestigatorAgent:
         sandbox.record.final_mechanistic_summary = (
             f"Phase 3A investigation complete for case '{case.case_id}'. "
             f"Executed {len(sandbox.record.experiments)} experiments across {len(hypotheses.hypotheses)} hypotheses. "
-            f"Residual-stream interventions established causal relevance of hidden representations at Layer 12, "
-            f"providing moderate intervention evidence for Hypothesis #{hypotheses.most_likely}. "
-            f"Note: Component-level mechanisms (e.g. specific attention heads) remain unresolved."
+            f"Residual-stream interventions established causal relevance of hidden representations at Layer 12."
         )
 
         sandbox.save_log()
         return sandbox.record
 
+    def generate_blind_prediction(
+        self, 
+        case: FailureCase, 
+        hypotheses: HypothesisSet, 
+        sandbox: InvestigationSandbox
+    ) -> BlindPrediction:
+        """
+        Generate Agent #2 blind prediction at freeze time based on experimental evidence accumulated.
+        Must receive ONLY case, hypotheses, and sandbox trajectory.
+        MUST NOT receive hidden test data.
+        """
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        pred_id = f"pred_a2_{uuid.uuid4().hex[:6]}"
+
+        # Evaluate highest confidence supported hypothesis from sandbox record
+        supported = [h for h in sandbox.record.hypothesis_evidence if len(h.supporting_experiments) > 0]
+        
+        if self.mock or self.client is None:
+            conf = 0.85 if len(supported) > 0 else 0.60
+            rationale = (
+                f"Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation "
+                f"causal relevance ({len(supported)} supporting experiments). Minimally edited variant will output expected label '{case.expected_behavior}'."
+            )
+            return BlindPrediction(
+                prediction_id=pred_id,
+                case_id=case.case_id,
+                investigator_type="causal_intervention",
+                predicted_behavior=f"Target model will adhere to expected behavior '{case.expected_behavior}' post-intervention evidence synthesis.",
+                predicted_label=case.expected_behavior,
+                confidence=conf,
+                rationale=rationale,
+                frozen_at=timestamp
+            )
+
+        # Real Gemini API call for Agent #2 blind prediction based on experiment trajectory
+        from google.genai import types
+        sys_prompt = (
+            "You are a causal AI safety investigator (Agent #2).\n"
+            "Based on your experimental activation interventions, predict how the target model will behave on a minimally edited prompt variant.\n"
+            "Produce a structured JSON blind prediction."
+        )
+        exp_summary = [f"Exp {e.experiment_id} [{e.experiment_type}]: base='{e.baseline_output}' -> int='{e.intervened_output}' (delta={e.observed_behavioral_delta})" for e in sandbox.record.experiments]
+        user_content = (
+            f"Failure Case: {case.case_id}\n"
+            f"Original Failure: {case.failure_description}\n"
+            f"Expected Behavior: {case.expected_behavior}\n\n"
+            f"Causal Experiments Executed:\n" + "\n".join(exp_summary) + "\n\n"
+            f"Predict the target model's output label on a minimally edited variant of the prompt."
+        )
+        config = types.GenerateContentConfig(
+            system_instruction=sys_prompt,
+            temperature=0.2,
+            response_mime_type="application/json",
+            response_schema=BlindPrediction
+        )
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                res = self.client.models.generate_content(model=self.model_name, contents=user_content, config=config)
+                if hasattr(res, "parsed") and res.parsed is not None:
+                    pred = res.parsed
+                else:
+                    pred = BlindPrediction.model_validate_json(res.text)
+                pred.investigator_type = "causal_intervention"
+                pred.case_id = case.case_id
+                pred.frozen_at = timestamp
+                return pred
+            except Exception as e:
+                if attempt < self.max_retries:
+                    time.sleep(self.base_delay * (2 ** (attempt - 1)))
+                else:
+                    raise RuntimeError(f"Agent #2 blind prediction failed on '{self.model_name}': {e}") from e
+
     def propose_experiments(self, case: FailureCase, hypotheses: HypothesisSet) -> List[ExperimentRequest]:
         """Formulate structured experiment proposals for Agent #2."""
-        if self.mock or self.client is None:
-            return self._generate_mock_experiment_requests(case, hypotheses)
-        
-        # Real Gemini API request for experiment proposals
         return self._generate_mock_experiment_requests(case, hypotheses)
 
     def _update_evidence(self, evidence: HypothesisEvidence, result: ExperimentResult):
-        """
-        Update hypothesis evidence state based on causal intervention outcome.
-        Enforces conservative scientific rules:
-        - Residual-stream intervention establishes causal relevance of layer representation.
-        - Does NOT claim proof of specific component sub-mechanisms (e.g. attention head routing).
-        """
+        """Update hypothesis evidence state based on causal intervention outcome conservatively."""
         delta = result.observed_behavioral_delta
         is_attention_head_claim = "attention" in evidence.mechanism_guess.lower() or "head" in evidence.mechanism_guess.lower()
 
@@ -199,15 +264,13 @@ class CausalInvestigatorAgent:
                 evidence.evidence_type = "intervention"
                 
                 if is_attention_head_claim:
-                    # Residual stream patching provides only indirect/inconclusive evidence for specific attention-head claims
                     evidence.status = "unresolved"
                     evidence.evidence_strength = "weak"
                     evidence.updated_confidence = "medium"
                     evidence.rationale = (
                         f"Residual-stream patch at Layer {result.layer_idx} caused a behavioral shift (delta={delta:.2f}), "
-                        f"confirming causal relevance of the layer representation. However, because the tool operates on "
-                        f"the layer residual stream rather than isolating individual attention heads, evidence for the "
-                        f"specific attention-head mechanism remains indirect/inconclusive."
+                        f"confirming causal relevance of the layer representation. However, evidence for specific "
+                        f"attention-head mechanisms remains indirect/inconclusive."
                     )
                 else:
                     evidence.status = "supported"
@@ -234,8 +297,7 @@ class CausalInvestigatorAgent:
                     evidence.evidence_strength = "weak"
                     evidence.rationale = (
                         f"Zero-ablation at Layer {result.layer_idx} altered baseline generation (delta={delta:.2f}), "
-                        f"demonstrating causal sensitivity of Layer {result.layer_idx}. It does NOT specifically isolate "
-                        f"individual attention heads."
+                        f"demonstrating causal sensitivity of Layer {result.layer_idx}. It does NOT specifically isolate individual attention heads."
                     )
                 else:
                     evidence.status = "supported"
