@@ -14,6 +14,16 @@ from schemas.hypotheses import FailureCase, Hypothesis, HypothesisSet, Agent1Gen
 from schemas.predictions import BlindPrediction
 
 
+class GeminiRateLimitError(Exception):
+    """Raised when Gemini API returns HTTP 429 rate limit / quota exceeded."""
+    pass
+
+
+class GeminiUnavailableError(Exception):
+    """Raised when Gemini API returns HTTP 503 service unavailable after retries."""
+    pass
+
+
 class HypothesisGeneratorAgent:
     """
     Agent #1: Hypothesis Generator & Baseline Predictor.
@@ -162,9 +172,15 @@ class HypothesisGeneratorAgent:
                 pred.frozen_at = timestamp
                 return pred
             except Exception as e:
+                err_str = str(e)
+                if any(k in err_str.lower() for k in ["429", "resource_exhausted", "quota", "rate limit", "rate_limit"]):
+                    raise GeminiRateLimitError(f"HTTP 429 Rate Limit Exceeded on Agent #1: {err_str}") from e
+                
                 if attempt < self.max_retries:
                     time.sleep(self.base_delay * (2 ** (attempt - 1)))
                 else:
+                    if any(k in err_str.lower() for k in ["503", "unavailable", "overloaded"]):
+                        raise GeminiUnavailableError(f"HTTP 503 Service Unavailable on Agent #1 after {self.max_retries} retries: {err_str}") from e
                     raise RuntimeError(f"Agent #1 blind prediction failed on '{self.model_name}': {e}") from e
 
     def _call_gemini_api(self, case: FailureCase) -> tuple[HypothesisSet, str]:
@@ -208,15 +224,22 @@ class HypothesisGeneratorAgent:
             except Exception as e:
                 last_error = e
                 err_str = str(e)
+                if any(k in err_str.lower() for k in ["429", "resource_exhausted", "quota", "rate limit", "rate_limit"]):
+                    raise GeminiRateLimitError(f"HTTP 429 Rate Limit Exceeded on Agent #1: {err_str}") from e
+
                 if attempt < self.max_retries:
                     delay = self.base_delay * (2 ** (attempt - 1))
                     print(f"  [RETRY {attempt}/{self.max_retries}] Query to '{used_model}' failed ({err_str}). Retrying in {delay:.1f}s...")
                     time.sleep(delay)
                 else:
                     print(f"  [FAIL] All {self.max_retries} attempts to query '{used_model}' failed. Final Error: {err_str}")
+                    if any(k in err_str.lower() for k in ["503", "unavailable", "overloaded"]):
+                        raise GeminiUnavailableError(f"HTTP 503 Service Unavailable on Agent #1 after {self.max_retries} retries: {err_str}") from e
                     raise RuntimeError(
                         f"Phase 2 Agent #1 execution failed after {self.max_retries} retries on fixed model '{used_model}': {err_str}"
                     ) from last_error
+
+        raise RuntimeError(f"Phase 2 Agent #1 execution failed on '{used_model}': {last_error}")
 
         raise RuntimeError(f"Phase 2 Agent #1 execution failed on '{used_model}': {last_error}")
 

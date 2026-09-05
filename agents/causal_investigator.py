@@ -20,6 +20,7 @@ from schemas.investigation import (
 )
 from schemas.predictions import BlindPrediction
 from interventions.sandbox import InvestigationSandbox, BudgetExhaustedError
+from agents.hypothesis_agent import GeminiRateLimitError, GeminiUnavailableError
 
 
 class CausalInvestigatorAgent:
@@ -246,9 +247,15 @@ class CausalInvestigatorAgent:
                 pred.frozen_at = timestamp
                 return pred
             except Exception as e:
+                err_str = str(e)
+                if any(k in err_str.lower() for k in ["429", "resource_exhausted", "quota", "rate limit", "rate_limit"]):
+                    raise GeminiRateLimitError(f"HTTP 429 Rate Limit Exceeded on Agent #2: {err_str}") from e
+
                 if attempt < self.max_retries:
                     time.sleep(self.base_delay * (2 ** (attempt - 1)))
                 else:
+                    if any(k in err_str.lower() for k in ["503", "unavailable", "overloaded"]):
+                        raise GeminiUnavailableError(f"HTTP 503 Service Unavailable on Agent #2 after {self.max_retries} retries: {err_str}") from e
                     raise RuntimeError(f"Agent #2 blind prediction failed on '{self.model_name}': {e}") from e
 
     def propose_experiments(self, case: FailureCase, hypotheses: HypothesisSet) -> List[ExperimentRequest]:
