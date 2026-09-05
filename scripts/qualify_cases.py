@@ -71,17 +71,30 @@ def main():
     parser = argparse.ArgumentParser(description="Qualify 15-case evaluation dataset for Causal Mechanistic Investigator.")
     parser.add_argument("--mock-gemma", action="store_true", default=False, help="Run Gemma target model in mock mode.")
     parser.add_argument("--dataset-path", type=str, default="cases/evaluation_cases.json", help="Path to evaluation cases JSON.")
-    parser.add_argument("--output-path", type=str, default="results/qualification_results.json", help="Path to save qualification results.")
+    parser.add_argument("--output-path", type=str, default=None, help="Path to save qualification results.")
+    parser.add_argument("--update-cases", action="store_true", help="Update evaluation_cases.json with actual Gemma model_response outputs.")
     args = parser.parse_args()
+
+    if args.output_path is None:
+        args.output_path = "results/qualification_results.json" if args.mock_gemma else "results/qualification_real_results.json"
 
     print("=" * 80)
     print("  PHASE 3 EVALUATION DATASET QUALIFICATION SCRIPT")
     print(f"  Target Model Mode : {'MOCK' if args.mock_gemma else 'REAL GEMMA 2 2B IT'}")
     print(f"  Dataset Path      : {args.dataset_path}")
+    print(f"  Output Path       : {args.output_path}")
     print("=" * 80)
 
     if not os.path.exists(args.dataset_path):
         raise FileNotFoundError(f"Evaluation dataset file not found at '{args.dataset_path}'.")
+
+    import torch
+    if not args.mock_gemma:
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required for real Gemma dataset qualification.")
+        hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+        if not hf_token or len(hf_token.strip()) == 0:
+            raise RuntimeError("HF_TOKEN environment variable is required for real Gemma dataset qualification.")
 
     with open(args.dataset_path, "r", encoding="utf-8") as f:
         cases = json.load(f)
@@ -101,6 +114,8 @@ def main():
         if res["status"] == "QUALIFIED":
             qualified_count += 1
             status_str = "[QUALIFIED]"
+            if args.update_cases or not args.mock_gemma:
+                case["model_response"] = res["original_output"]
         else:
             rejected_count += 1
             status_str = "[REJECTED]"
@@ -119,6 +134,11 @@ def main():
 
     with open(args.output_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
+
+    if args.update_cases:
+        with open(args.dataset_path, "w", encoding="utf-8") as f:
+            json.dump(cases, f, indent=2)
+        print(f"  Updated dataset saved with real Gemma responses to '{args.dataset_path}'.")
 
     print("\n" + "=" * 80)
     print("  QUALIFICATION SUMMARY REPORT")

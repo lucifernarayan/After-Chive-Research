@@ -22,7 +22,7 @@ import time
 import json
 import argparse
 import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import torch
 
 # Ensure project root is in sys.path
@@ -165,12 +165,22 @@ def _save_checkpoint(
     return aggregate_metrics
 
 
+def _assert_real_target_output(text: str, logprobs: Optional[Dict[str, float]], case_id: str, context: str):
+    """Guard against mock output strings or synthetic logprobs during real evaluation."""
+    if "[Mock Gemma Response]" in text or "[Ablated Response]" in text:
+        raise RuntimeError(f"Mock response string detected in {context} for case '{case_id}': '{text}'")
+    if logprobs is not None:
+        vals = list(logprobs.values())
+        if len(vals) >= 2 and vals[0] == -0.15 and vals[1] == -3.65:
+            raise RuntimeError(f"Mock candidate logprobs detected in {context} for case '{case_id}': {logprobs}")
+
+
 def run_phase4a_evaluation(
     mock_gemma: bool = False,
     mock_gemini: bool = False,
     cases_path: str = "cases/evaluation_cases.json",
-    results_path: str = "results/phase4a_results.json",
-    summary_path: str = "results/phase4a_summary.json"
+    results_path: str = "results/phase4a_real_results.json",
+    summary_path: str = "results/phase4a_real_summary.json"
 ) -> Dict[str, Any]:
     start_total_time = time.time()
     
@@ -189,6 +199,28 @@ def run_phase4a_evaluation(
 
     print(f"\nLoaded {len(case_specs)} evaluation cases from '{cases_path}'.")
 
+    # Real-mode safety checks & assertions
+    cuda_ok = torch.cuda.is_available()
+    hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    hf_ok = hf_token is not None and len(hf_token.strip()) > 0
+    api_key = os.environ.get("GEMINI_API_KEY")
+    gemini_ok = api_key is not None and len(api_key.strip()) > 0
+
+    print("REAL MODE ASSERTIONS:")
+    print(f"  CUDA                  : {'PASS' if cuda_ok else 'FAIL'}")
+    print(f"  HF_TOKEN              : {'PRESENT' if hf_ok else 'MISSING'}")
+    print(f"  GEMINI_API_KEY        : {'PRESENT' if gemini_ok else 'MISSING'}")
+    print(f"  Target mock mode      : {mock_gemma}")
+    print(f"  Investigator mock mode: {mock_gemini}")
+
+    if not (mock_gemma or mock_gemini):
+        if not cuda_ok:
+            raise RuntimeError("CUDA is unavailable. Real evaluation requires CUDA GPU.")
+        if not hf_ok:
+            raise RuntimeError("HF_TOKEN environment variable is missing. Real evaluation requires Hugging Face authentication.")
+        if not gemini_ok:
+            raise RuntimeError("GEMINI_API_KEY environment variable is missing. Real evaluation requires Gemini API key.")
+
     # 1. RESUME SUPPORT: Load existing completed cases from results_path if present
     case_records = []
     completed_case_ids = set()
@@ -196,34 +228,38 @@ def run_phase4a_evaluation(
         try:
             with open(results_path, "r", encoding="utf-8") as f:
                 existing_data = json.load(f)
+            existing_mode = existing_data.get("aggregate_metrics", {}).get("execution_mode")
             existing_cases = existing_data.get("cases", [])
-            for c in existing_cases:
-                c_id = c.get("case_id")
-                if c_id:
-                    case_records.append(c)
-                    completed_case_ids.add(c_id)
-            print(f"  [RESUME ACTIVE] Found existing '{results_path}' with {len(completed_case_ids)} completed cases.")
+
+            has_mock_responses = any(
+                "[Mock Gemma Response]" in str(c.get("actual_target_output", "")) or
+                "[Mock Gemma Response]" in str(c.get("input_case", {}).get("model_response", ""))
+                for c in existing_cases
+            )
+
+            if not (mock_gemma or mock_gemini) and (existing_mode == "mock" or has_mock_responses):
+                print(f"  [RESUME REFUSED] Existing results file '{results_path}' is mock-contaminated (execution_mode='{existing_mode}'). Starting fresh real evaluation.")
+            else:
+                for c in existing_cases:
+                    c_id = c.get("case_id")
+                    if c_id:
+                        case_records.append(c)
+                        completed_case_ids.add(c_id)
+                print(f"  [RESUME ACTIVE] Found existing '{results_path}' with {len(completed_case_ids)} completed cases.")
         except Exception as e:
             print(f"  [RESUME NOTICE] Could not parse existing results at '{results_path}': {e}. Starting fresh.")
-
-    device = "cuda" if torch.cuda.is_available() and not mock_gemma else "cpu"
-    api_key = os.environ.get("GEMINI_API_KEY")
-    key_present = api_key is not None and len(api_key.strip()) > 0
-
-    print(f"  Target Model      : google/gemma-2-2b-it (Mode: {'MOCK' if mock_gemma else 'FULL HF TRANSFORMERS'})")
-    print(f"  Investigator Model: gemini-3.8-flash (Mode: {'MOCK' if mock_gemini else 'REAL GEMINI API'})")
-    print(f"  Compute Device    : {device}")
-    print(f"  GEMINI_API_KEY    : {'PRESENT' if key_present else 'NOT SET'}")
-
-    if not key_present and not mock_gemini:
-        print("  [NOTICE] GEMINI_API_KEY not set. Defaulting Agent #1 & Agent #2 to mock mode.")
-        mock_gemini = True
 
     # Instantiate Target Interface, Agents, and Vault
     target_interface = GemmaTargetInterface(model_id="google/gemma-2-2b-it", mock=mock_gemma)
     agent1 = HypothesisGeneratorAgent(model_name="gemini-3.8-flash", mock=mock_gemini)
     agent2 = CausalInvestigatorAgent(model_name="gemini-3.8-flash", mock=mock_gemini)
     vault = HiddenTestVault()
+
+    if not (mock_gemma or mock_gemini):
+        if target_interface.mock:
+            raise RuntimeError("Target model interface is in mock mode despite real evaluation request.")
+        if agent1.mock or agent2.mock:
+            raise RuntimeError("Investigator agent is in mock mode despite real evaluation request.")
 
     print("\n" + "=" * 80)
     print("  BEGINNING EVALUATION LOOP WITH ATOMIC PERSISTENCE & RESUME SUPPORT")
@@ -246,6 +282,8 @@ def run_phase4a_evaluation(
             
             # Step A: Target model inference on original prompt
             orig_resp, orig_logprobs = target_interface.run_inference(spec["original_prompt"], candidate_tokens=cands)
+            if not (mock_gemma or mock_gemini):
+                _assert_real_target_output(orig_resp, orig_logprobs, c_id, "original target inference")
 
             failure_case = FailureCase(
                 case_id=c_id,
@@ -280,6 +318,8 @@ def run_phase4a_evaluation(
 
             # Step F: Target execution on hidden variant prompt
             actual_hidden_text, actual_hidden_logprobs = target_interface.run_inference(spec["hidden_variant"], candidate_tokens=cands)
+            if not (mock_gemma or mock_gemini):
+                _assert_real_target_output(actual_hidden_text, actual_hidden_logprobs, c_id, "hidden target inference")
 
             # Step G: Reveal & score
             scoring = vault.reveal_and_evaluate(c_id, a1_pred, a2_pred)
@@ -371,13 +411,9 @@ if __name__ == "__main__":
     parser.add_argument("--mock-gemma", action="store_true", help="Run Gemma target model in mock mode")
     parser.add_argument("--mock-gemini", action="store_true", help="Run Agent 1 and Agent 2 in mock mode")
     parser.add_argument("--cases-path", type=str, default="cases/evaluation_cases.json", help="Path to cases JSON")
-    parser.add_argument("--results-path", type=str, default="results/phase4a_results.json", help="Path to detailed results JSON")
-    parser.add_argument("--summary-path", type=str, default="results/phase4a_summary.json", help="Path to summary JSON")
+    parser.add_argument("--results-path", type=str, default="results/phase4a_real_results.json", help="Path to detailed results JSON")
+    parser.add_argument("--summary-path", type=str, default="results/phase4a_real_summary.json", help="Path to summary JSON")
     args = parser.parse_args()
-
-    if not torch.cuda.is_available() and not args.mock_gemma:
-        print("  [NOTICE] No CUDA GPU detected locally. Setting --mock-gemma for mock validation.")
-        args.mock_gemma = True
 
     run_phase4a_evaluation(
         mock_gemma=args.mock_gemma,
