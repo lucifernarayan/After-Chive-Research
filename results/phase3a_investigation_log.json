@@ -1,9 +1,9 @@
 {
-  "investigation_id": "inv_28c40ea5",
+  "investigation_id": "inv_e72953e2",
   "case_id": "test_001",
   "target_model_name": "google/gemma-2-2b-it",
   "investigator_model_name": "openai/gpt-5.6-luna",
-  "timestamp": "2026-09-06T19:05:25.012906+00:00",
+  "timestamp": "2026-09-06T19:39:58.945209+00:00",
   "budget_status": {
     "max_experiments": 5,
     "max_target_calls": 15,
@@ -14,7 +14,7 @@
   },
   "experiments": [
     {
-      "investigation_id": "inv_28c40ea5",
+      "investigation_id": "inv_e72953e2",
       "experiment_id": "exp_001",
       "hypothesis_id": 1,
       "experiment_type": "patch",
@@ -29,7 +29,7 @@
         1,
         2304
       ],
-      "activation_l2_norm": 46.93828201293945,
+      "activation_l2_norm": 47.86153030395508,
       "patch_delta_norm": 35.5,
       "observed_behavioral_delta": 1.0,
       "candidate_logprobs": {
@@ -38,12 +38,12 @@
       },
       "evidence_type": "intervention",
       "evidence_strength": "moderate",
-      "timestamp": "2026-09-06T19:05:25.013015+00:00",
+      "timestamp": "2026-09-06T19:39:58.945296+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "openai/gpt-5.6-luna"
     },
     {
-      "investigation_id": "inv_28c40ea5",
+      "investigation_id": "inv_e72953e2",
       "experiment_id": "exp_002",
       "hypothesis_id": 2,
       "experiment_type": "ablate",
@@ -63,12 +63,12 @@
       },
       "evidence_type": "intervention",
       "evidence_strength": "moderate",
-      "timestamp": "2026-09-06T19:05:25.015616+00:00",
+      "timestamp": "2026-09-06T19:39:58.946566+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "openai/gpt-5.6-luna"
     },
     {
-      "investigation_id": "inv_28c40ea5",
+      "investigation_id": "inv_e72953e2",
       "experiment_id": "exp_003",
       "hypothesis_id": 3,
       "experiment_type": "run_target",
@@ -88,7 +88,7 @@
       },
       "evidence_type": "observational",
       "evidence_strength": "weak",
-      "timestamp": "2026-09-06T19:05:25.018111+00:00",
+      "timestamp": "2026-09-06T19:39:58.947795+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "openai/gpt-5.6-luna"
     }

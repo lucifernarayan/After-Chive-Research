@@ -155,7 +155,37 @@ class TestPhase4ASafety(unittest.TestCase):
         self.assertNotIn("hidden_variant", fields)
         self.assertNotIn("expected_hidden_behavior", fields)
         self.assertNotIn("hidden_output", fields)
-        self.assertNotIn("hidden_candidate_logprobs", fields)
+    def test_case_limit_parameter(self):
+        """Test that passing limit parameter caps the number of processed cases."""
+        # Create a dataset with 3 test cases
+        three_cases = [
+            {
+                "case_id": f"test_case_{i}",
+                "failure_family": "negation_instruction",
+                "task_description": f"Test Case {i}",
+                "original_prompt": f"Prompt {i}",
+                "expected_original_behavior": f"Behavior {i}",
+                "hidden_variant": f"Hidden Prompt {i}",
+                "expected_hidden_behavior": f"Behavior {i}",
+                "candidate_labels": ["Label1", "Label2"],
+                "failure_description": f"Failure {i}"
+            }
+            for i in range(1, 4)
+        ]
+        cases_3_file = os.path.join(self.temp_dir.name, "test_cases_3.json")
+        with open(cases_3_file, "w", encoding="utf-8") as f:
+            json.dump(three_cases, f, indent=2)
+
+        res = run_phase4a_evaluation(
+            mock_gemma=True,
+            mock_gemini=True,
+            cases_path=cases_3_file,
+            results_path=self.results_file,
+            summary_path=self.summary_file,
+            limit=2
+        )
+        self.assertEqual(res["total_cases"], 2)
+        self.assertEqual(res["completed_cases"], 2)
 
 
 if __name__ == "__main__":

@@ -187,7 +187,8 @@ def run_phase4a_evaluation(
     mock_gemini: bool = False,
     cases_path: str = "cases/evaluation_cases.json",
     results_path: str = PHASE4A_RESULTS_PATH,
-    summary_path: str = PHASE4A_SUMMARY_PATH
+    summary_path: str = PHASE4A_SUMMARY_PATH,
+    limit: Optional[int] = None
 ) -> Dict[str, Any]:
     start_total_time = time.time()
     
@@ -196,6 +197,8 @@ def run_phase4a_evaluation(
     print("  PROJECT: CAUSAL MECHANISTIC INVESTIGATOR - PHASE 4A COMPARATIVE EVALUATION")
     print(f"  MODE: {exec_type}")
     print(f"  Dataset Path: {cases_path}")
+    if limit is not None and limit > 0:
+        print(f"  Case Limit: ONLY processing first {limit} case(s)")
     print("=" * 80)
 
     if not os.path.exists(cases_path):
@@ -204,7 +207,11 @@ def run_phase4a_evaluation(
     with open(cases_path, "r", encoding="utf-8") as f:
         case_specs = json.load(f)
 
-    print(f"\nLoaded {len(case_specs)} evaluation cases from '{cases_path}'.")
+    if limit is not None and limit > 0:
+        case_specs = case_specs[:limit]
+        print(f"\n[LIMIT APPLIED] Sliced dataset to first {len(case_specs)} evaluation cases.")
+    else:
+        print(f"\nLoaded {len(case_specs)} evaluation cases from '{cases_path}'.")
 
     # Real-mode safety checks & assertions
     cuda_ok = torch.cuda.is_available()
@@ -420,6 +427,7 @@ if __name__ == "__main__":
     parser.add_argument("--cases-path", type=str, default="cases/evaluation_cases.json", help="Path to cases JSON")
     parser.add_argument("--results-path", type=str, default=PHASE4A_RESULTS_PATH, help="Path to detailed results JSON")
     parser.add_argument("--summary-path", type=str, default=PHASE4A_SUMMARY_PATH, help="Path to summary JSON")
+    parser.add_argument("--limit", type=int, default=None, help="Limit number of evaluation cases to process (e.g. 2 for validation)")
     args = parser.parse_args()
 
     run_phase4a_evaluation(
@@ -427,5 +435,6 @@ if __name__ == "__main__":
         mock_gemini=args.mock_gemini,
         cases_path=args.cases_path,
         results_path=args.results_path,
-        summary_path=args.summary_path
+        summary_path=args.summary_path,
+        limit=args.limit
     )
