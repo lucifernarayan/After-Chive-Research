@@ -155,6 +155,8 @@ class TestPhase4ASafety(unittest.TestCase):
         self.assertNotIn("hidden_variant", fields)
         self.assertNotIn("expected_hidden_behavior", fields)
         self.assertNotIn("hidden_output", fields)
+        self.assertNotIn("hidden_candidate_logprobs", fields)
+
     def test_case_limit_parameter(self):
         """Test that passing limit parameter caps the number of processed cases."""
         # Create a dataset with 3 test cases
@@ -186,6 +188,42 @@ class TestPhase4ASafety(unittest.TestCase):
         )
         self.assertEqual(res["total_cases"], 2)
         self.assertEqual(res["completed_cases"], 2)
+
+    def test_custom_output_paths_isolation(self):
+        """Test that passing custom results_path starts with zero completed cases even if default results file exists."""
+        # 1. Write an existing results file with completed case 'test_001'
+        default_res_path = os.path.join(self.temp_dir.name, "default_results.json")
+        default_sum_path = os.path.join(self.temp_dir.name, "default_summary.json")
+        
+        run_phase4a_evaluation(
+            mock_gemma=True,
+            mock_gemini=True,
+            cases_path=self.cases_file,
+            results_path=default_res_path,
+            summary_path=default_sum_path
+        )
+        self.assertTrue(os.path.exists(default_res_path))
+
+        # 2. Run evaluation pointing to NEW custom output paths
+        custom_res_path = os.path.join(self.temp_dir.name, "validation_2case_results.json")
+        custom_sum_path = os.path.join(self.temp_dir.name, "validation_2case_summary.json")
+
+        res = run_phase4a_evaluation(
+            mock_gemma=True,
+            mock_gemini=True,
+            cases_path=self.cases_file,
+            results_path=custom_res_path,
+            summary_path=custom_sum_path
+        )
+
+        # 3. Verify custom results file was created independently and processed case test_001 afresh
+        self.assertTrue(os.path.exists(custom_res_path))
+        self.assertTrue(os.path.exists(custom_sum_path))
+        self.assertEqual(res["completed_cases"], 1)
+
+        with open(custom_res_path, "r", encoding="utf-8") as f:
+            custom_data = json.load(f)
+        self.assertEqual(custom_data["cases"][0]["case_id"], "test_001")
 
 
 if __name__ == "__main__":

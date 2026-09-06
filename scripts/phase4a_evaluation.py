@@ -197,8 +197,10 @@ def run_phase4a_evaluation(
     print("  PROJECT: CAUSAL MECHANISTIC INVESTIGATOR - PHASE 4A COMPARATIVE EVALUATION")
     print(f"  MODE: {exec_type}")
     print(f"  Dataset Path: {cases_path}")
+    print(f"  Results Path: {results_path}")
+    print(f"  Summary Path: {summary_path}")
     if limit is not None and limit > 0:
-        print(f"  Case Limit: ONLY processing first {limit} case(s)")
+        print(f"  Case Limit  : ONLY processing first {limit} case(s)")
     print("=" * 80)
 
     if not os.path.exists(cases_path):
