@@ -87,22 +87,117 @@ class CausalInvestigatorAgent:
             "You are an AI safety mechanistic investigator (Agent #2).\n"
             "Your task is to test hypotheses for a target model failure using explicit causal residual-stream intervention tools.\n\n"
             "EXPLICIT TOOL DEFINITIONS:\n"
-            "- run_target(prompt): Runs Gemma target model without intervention (observational baseline).\n"
-            "- capture_activation(prompt, layer_idx, position): Captures residual-stream activation vector output[0] at a layer/position (observational).\n"
-            "- patch_activation(source_prompt, target_prompt, layer_idx, source_pos, target_pos): Patches residual-stream activation from source into target (residual-stream intervention).\n"
-            "- ablate_activation(prompt, layer_idx, position): Zero-ablates residual-stream activation at layer/position (residual-stream intervention).\n"
-            "- compare_outputs(baseline, intervened, label): Deterministically compares text output deltas.\n\n"
+            "- run_target(prompt): Observational baseline run.\n"
+            "- capture_activation(prompt, layer_idx, position): Captures residual stream activation tensor at layer/position.\n"
+            "- patch_activation(source_prompt, target_prompt, layer_idx, source_pos, target_pos): Patches residual stream activation from source into target.\n"
+            "- ablate_activation(prompt, layer_idx, position): Zero-ablates residual stream activation.\n"
+            "- tokenize_prompt(prompt): Tokenizes prompt and returns exact token alignment map.\n"
+            "- layer_sweep(prompt, start_layer, end_layer, step_layer, position_idx): Sweeps layers to find causal depth.\n"
+            "- position_sweep(prompt, layer_idx, start_pos, end_pos): Sweeps positions at a layer.\n"
+            "- dose_response(source_prompt, target_prompt, layer_idx, source_pos, target_pos, alphas): Interpolates patch alpha in [0.0..1.0].\n"
+            "- contrastive_control(source_prompt, control_prompt, target_prompt, layer_idx): Compares source vs control patch.\n"
+            "- bidirectional_patch(prompt_a, prompt_b, layer_idx): Evaluates symmetric causal transfer A->B and B->A.\n\n"
             "CRITICAL SCIENTIFIC CONSTRAINTS:\n"
-            "1. Tools manipulate residual-stream hidden states at a layer/position. They do NOT ablate individual attention heads or specific sub-modules.\n"
-            "2. A behavioral shift from residual patching/ablation proves CAUSAL RELEVANCE of the residual representation at that layer. It does NOT automatically prove a specific component mechanism (e.g. attention-head routing).\n"
-            "3. You have NO Python execution, shell execution, or file read tools.\n"
-            "4. You NEVER have access to hidden test prompts or outcomes.\n"
-            "5. Mark evidence status as 'supported', 'weakened', or 'unresolved'. NEVER claim a hypothesis or mechanism is 'proven'."
+            "1. Tools manipulate residual-stream hidden states at specified layers/positions. They do NOT ablate individual attention heads or specific sub-modules.\n"
+            "2. Focus on maximum information gain: use continuous candidate logprob margin deltas (logP(c0) - logP(c1)) to detect subtle representation shifts.\n"
+            "3. Mark evidence status as 'unsupported', 'weakly_supported', 'supported', 'contradicted', 'unresolved', or 'mechanism_discriminating'. NEVER claim a hypothesis is 'proven'.\n"
+            "4. You have NO Python execution, shell execution, or file read tools.\n"
+            "5. You NEVER have access to hidden test prompts or outcomes."
         )
+
+    def _dispatch_tool(self, req: ExperimentRequest, case: FailureCase, sandbox: InvestigationSandbox) -> ExperimentResult:
+        """Dispatch experiment request to appropriate sandbox tool."""
+        if req.experiment_type == "run_target":
+            return sandbox.run_target(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
+        elif req.experiment_type == "capture":
+            return sandbox.capture_activation(req.prompt, req.layer_idx or 12, req.position_idx or 3, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
+        elif req.experiment_type == "patch":
+            src = req.source_prompt or case.prompt
+            return sandbox.patch_activation(
+                source_prompt=src,
+                target_prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                source_pos=req.position_idx or 3,
+                target_pos=req.target_position_idx or 3,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
+        elif req.experiment_type == "ablate":
+            return sandbox.ablate_activation(
+                prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                position_idx=req.position_idx or 3,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
+        elif req.experiment_type == "tokenize_prompt":
+            return sandbox.tokenize_prompt(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id)
+        elif req.experiment_type in ["layer_sweep", "patch_sweep"]:
+            return sandbox.layer_sweep(
+                prompt=req.prompt,
+                start_layer=req.start_layer or 0,
+                end_layer=req.end_layer or 24,
+                step_layer=req.step_layer or 4,
+                position_idx=req.position_idx or 0,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens,
+                source_prompt=req.source_prompt
+            )
+        elif req.experiment_type == "position_sweep":
+            return sandbox.position_sweep(
+                prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                start_pos=req.start_pos or 0,
+                end_pos=req.end_pos or 8,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens,
+                source_prompt=req.source_prompt
+            )
+        elif req.experiment_type == "dose_response":
+            return sandbox.dose_response(
+                source_prompt=req.source_prompt or case.prompt,
+                target_prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                source_pos=req.position_idx or 0,
+                target_pos=req.target_position_idx or 0,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
+        elif req.experiment_type == "contrastive_control":
+            return sandbox.contrastive_control(
+                source_prompt=req.source_prompt or case.prompt,
+                control_prompt=req.control_prompt or case.prompt,
+                target_prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                source_pos=req.position_idx or 0,
+                control_pos=0,
+                target_pos=req.target_position_idx or 0,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
+        elif req.experiment_type == "bidirectional_patch":
+            return sandbox.bidirectional_patch(
+                prompt_a=req.source_prompt or case.prompt,
+                prompt_b=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                pos_a=req.position_idx or 0,
+                pos_b=req.target_position_idx or 0,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
+        else:
+            return sandbox.run_target(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
 
     def investigate(self, case: FailureCase, hypotheses: HypothesisSet, sandbox: InvestigationSandbox) -> InvestigationRecord:
         """
-        Execute full Phase 3A investigation loop:
+        Execute full Phase 3A adaptive investigation loop:
         1. Propose experiments to test hypotheses.
         2. Run experiments via sandbox tools.
         3. Record immutable experiment outputs with evidence classification.
@@ -126,65 +221,59 @@ class CausalInvestigatorAgent:
                 evidence_strength="weak",
                 updated_confidence=h.confidence,
                 status="unresolved",
+                max_margin_delta=0.0,
                 rationale="No causal intervention evidence gathered yet."
             )
 
-        # Generate Experiment Requests
-        exp_requests = self.propose_experiments(case, hypotheses, budget=sandbox.budget)
+        # Adaptive Multi-Step Loop (up to 2 iterations or budget exhaustion)
+        iteration = 0
+        max_iterations = 2
 
-        # Execute Experiments via Sandbox
-        for req in exp_requests:
-            if sandbox.budget.is_exhausted():
-                print(f"  [NOTICE] Investigation budget exhausted. Halting experiments for '{case.case_id}'.")
+        while iteration < max_iterations and not sandbox.budget.is_exhausted():
+            iteration += 1
+            print(f"\n  --- Adaptive Investigation Iteration {iteration}/{max_iterations} ---")
+
+            exp_requests = self.propose_experiments(case, hypotheses, budget=sandbox.budget)
+            if not exp_requests:
                 break
 
-            try:
-                print(f"\n  Executing Tool [{req.experiment_type.upper()}] for Hypothesis #{req.hypothesis_id}...")
-                print(f"    Rationale: {req.rationale}")
+            executed_any = False
+            for req in exp_requests:
+                if sandbox.budget.is_exhausted():
+                    print(f"  [NOTICE] Investigation budget exhausted. Halting experiments for '{case.case_id}'.")
+                    break
 
-                if req.experiment_type == "run_target":
-                    res = sandbox.run_target(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
-                elif req.experiment_type == "capture":
-                    res = sandbox.capture_activation(req.prompt, req.layer_idx or 12, req.position_idx or 3, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
-                elif req.experiment_type == "patch":
-                    src = req.source_prompt or case.prompt
-                    res = sandbox.patch_activation(
-                        source_prompt=src,
-                        target_prompt=req.prompt,
-                        layer_idx=req.layer_idx or 12,
-                        source_pos=req.position_idx or 3,
-                        target_pos=req.target_position_idx or 3,
-                        hypothesis_id=req.hypothesis_id,
-                        exp_id=req.experiment_id,
-                        candidate_tokens=req.candidate_tokens
-                    )
-                elif req.experiment_type == "ablate":
-                    res = sandbox.ablate_activation(
-                        prompt=req.prompt,
-                        layer_idx=req.layer_idx or 12,
-                        position_idx=req.position_idx or 3,
-                        hypothesis_id=req.hypothesis_id,
-                        exp_id=req.experiment_id,
-                        candidate_tokens=req.candidate_tokens
-                    )
-                else:
-                    res = sandbox.run_target(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
+                try:
+                    print(f"\n  Executing Tool [{req.experiment_type.upper()}] for Hypothesis #{req.hypothesis_id}...")
+                    print(f"    Rationale: {req.rationale}")
 
-                # Update hypothesis evidence based on intervention result
-                self._update_evidence(evidence_map[req.hypothesis_id], res)
+                    res = self._dispatch_tool(req, case, sandbox)
+                    executed_any = True
 
-            except BudgetExhaustedError as e:
-                print(f"  [BUDGET EXHAUSTED] {e}")
+                    # Update hypothesis evidence based on intervention result
+                    self._update_evidence(evidence_map[req.hypothesis_id], res)
+
+                except BudgetExhaustedError as e:
+                    print(f"  [BUDGET EXHAUSTED] {e}")
+                    break
+                except Exception as e:
+                    print(f"  [ERROR] Experiment '{req.experiment_id}' failed: {e}")
+
+            if not executed_any:
                 break
-            except Exception as e:
-                print(f"  [ERROR] Experiment '{req.experiment_id}' failed: {e}")
+
+            # Check if all hypotheses have reached discriminating or supported status
+            all_resolved = all(ev.status in ["supported", "mechanism_discriminating", "contradicted"] for ev in evidence_map.values())
+            if all_resolved:
+                print(f"  [ADAPTIVE LOOP] All hypotheses resolved. Completing investigation early at iteration {iteration}.")
+                break
 
         # Record final evidence map
         sandbox.record.hypothesis_evidence = list(evidence_map.values())
         sandbox.record.final_mechanistic_summary = (
             f"Phase 3A investigation complete for case '{case.case_id}'. "
             f"Executed {len(sandbox.record.experiments)} experiments across {len(hypotheses.hypotheses)} hypotheses. "
-            f"Residual-stream interventions established causal relevance of hidden representations at Layer 12."
+            f"Residual-stream interventions established causal relevance of hidden representations."
         )
 
         sandbox.save_log()
@@ -199,25 +288,26 @@ class CausalInvestigatorAgent:
         """
         Generate Agent #2 blind prediction at freeze time based on experimental evidence accumulated.
         Must receive ONLY case, hypotheses, and sandbox trajectory.
-        MUST NOT receive hidden test data.
+        MUST NOT receive hidden test data or expected_behavior strings in prompt.
         """
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         pred_id = f"pred_a2_{uuid.uuid4().hex[:6]}"
 
-        # Evaluate highest confidence supported hypothesis from sandbox record
-        supported = [h for h in sandbox.record.hypothesis_evidence if len(h.supporting_experiments) > 0]
+        has_mechanism_evidence = any(h.status == "mechanism_discriminating" or h.evidence_type == "mechanism_discriminating" for h in sandbox.record.hypothesis_evidence)
+        has_supported_evidence = any(h.status == "supported" for h in sandbox.record.hypothesis_evidence)
         
         if self.mock or self.client is None:
-            conf = 0.85 if len(supported) > 0 else 0.60
+            conf = 0.88 if has_mechanism_evidence else (0.80 if has_supported_evidence else 0.60)
             rationale = (
-                f"Causal interventions (residual stream patching/ablation at Layer 12) confirmed layer representation "
-                f"causal relevance ({len(supported)} supporting experiments). Minimally edited variant will output expected label '{case.expected_behavior}'."
+                f"Causal interventions confirmed layer representation causal relevance. "
+                f"Mechanism discriminating evidence: {has_mechanism_evidence}. "
+                f"Minimally edited variant will output expected label '{case.expected_behavior}'."
             )
             return BlindPrediction(
                 prediction_id=pred_id,
                 case_id=case.case_id,
                 investigator_type="causal_intervention",
-                predicted_behavior=f"Target model will adhere to expected behavior '{case.expected_behavior}' post-intervention evidence synthesis.",
+                predicted_behavior=f"Target model will adhere to expected behavior post-intervention evidence synthesis.",
                 predicted_label=case.expected_behavior,
                 confidence=conf,
                 rationale=rationale,
@@ -228,9 +318,11 @@ class CausalInvestigatorAgent:
         sys_prompt = (
             "You are a causal AI safety investigator (Agent #2).\n"
             "Based on your experimental activation interventions, predict how the target model will behave on a minimally edited prompt variant.\n"
+            "Evaluate counterfactual generalization explicitly.\n"
+            "Calibrate confidence conservatively (DO NOT exceed 0.90 confidence unless strong mechanism-discriminating evidence exists).\n"
             "Produce a structured JSON blind prediction."
         )
-        exp_summary = [f"Exp {e.experiment_id} [{e.experiment_type}]: base='{e.baseline_output}' -> int='{e.intervened_output}' (delta={e.observed_behavioral_delta})" for e in sandbox.record.experiments]
+        exp_summary = [f"Exp {e.experiment_id} [{e.experiment_type}]: base='{e.baseline_output}' -> int='{e.intervened_output}' (margin_delta={e.candidate_margin_delta:.2f}, delta={e.observed_behavioral_delta:.2f})" for e in sandbox.record.experiments]
         user_content = (
             f"Failure Case: {case.case_id}\n"
             f"Original Prompt: {case.prompt}\n"
@@ -269,6 +361,8 @@ class CausalInvestigatorAgent:
                 pred.investigator_type = "causal_intervention"
                 pred.case_id = case.case_id
                 pred.frozen_at = timestamp
+                if not has_mechanism_evidence and pred.confidence > 0.90:
+                    pred.confidence = 0.88
                 return pred
 
             except Exception as e:
@@ -325,12 +419,17 @@ class CausalInvestigatorAgent:
             "1. 'run_target': Observational baseline run. Parameters: prompt, candidate_tokens.\n"
             "2. 'capture': Captures residual stream activation tensor. Parameters: prompt, layer_idx (0-25), position_idx, candidate_tokens.\n"
             "3. 'patch': Patches residual stream activation from source_prompt into target prompt. Parameters: prompt, source_prompt, layer_idx (0-25), position_idx, target_position_idx, candidate_tokens.\n"
-            "4. 'ablate': Zero-ablates residual stream activation. Parameters: prompt, layer_idx (0-25), position_idx, candidate_tokens.\n\n"
+            "4. 'ablate': Zero-ablates residual stream activation. Parameters: prompt, layer_idx (0-25), position_idx, candidate_tokens.\n"
+            "5. 'tokenize_prompt': Returns exact token alignment map. Parameters: prompt.\n"
+            "6. 'layer_sweep': Sweeps layers to find causal depth. Parameters: prompt, start_layer, end_layer, step_layer, position_idx, candidate_tokens, source_prompt.\n"
+            "7. 'position_sweep': Sweeps token positions at a layer. Parameters: prompt, layer_idx, start_pos, end_pos, candidate_tokens, source_prompt.\n"
+            "8. 'dose_response': Interpolates patch alpha in [0.0, 0.25, 0.5, 0.75, 1.0]. Parameters: prompt, source_prompt, layer_idx, position_idx, target_position_idx, candidate_tokens.\n"
+            "9. 'contrastive_control': Compares source vs control patch. Parameters: prompt, source_prompt, control_prompt, layer_idx, position_idx, candidate_tokens.\n"
+            "10. 'bidirectional_patch': Evaluates symmetric causal transfer. Parameters: prompt (prompt_b), source_prompt (prompt_a), layer_idx, position_idx, target_position_idx, candidate_tokens.\n\n"
             "CRITICAL CONSTRAINTS:\n"
             "- Propose between 1 and {max_exp} structured experiments.\n"
             "- Each proposal must test a specific hypothesis_id (1-indexed).\n"
-            "- Use ONLY valid tool names: 'run_target', 'capture', 'patch', 'ablate'.\n"
-            "- Specify exact layer_idx (0-25) and position_idx where applicable.\n"
+            "- Use ONLY valid tool names.\n"
             "- Provide a clear, falsifiable rationale for each experiment.\n"
             "- NEVER assume access to hidden test prompts or hidden outcomes."
         ).format(max_exp=max_exp)
@@ -376,7 +475,11 @@ class CausalInvestigatorAgent:
                     raise ValueError("Agent #2 proposal set returned empty proposals list.")
 
                 # Validate proposals strictly
-                valid_tools = {"run_target", "capture", "patch", "ablate", "compare"}
+                valid_tools = {
+                    "run_target", "capture", "patch", "ablate", "compare",
+                    "tokenize_prompt", "layer_sweep", "position_sweep", "patch_sweep",
+                    "dose_response", "contrastive_control", "bidirectional_patch"
+                }
                 valid_hyp_ids = set(range(1, len(hypotheses.hypotheses) + 1))
                 
                 validated_requests = []
@@ -411,67 +514,52 @@ class CausalInvestigatorAgent:
     def _update_evidence(self, evidence: HypothesisEvidence, result: ExperimentResult):
         """Update hypothesis evidence state based on causal intervention outcome conservatively."""
         delta = result.observed_behavioral_delta
+        m_delta = result.candidate_margin_delta
         is_attention_head_claim = "attention" in evidence.mechanism_guess.lower() or "head" in evidence.mechanism_guess.lower()
 
-        if result.experiment_type == "patch":
-            if delta > 0.0:
+        if abs(m_delta) > abs(evidence.max_margin_delta):
+            evidence.max_margin_delta = m_delta
+
+        if result.experiment_type in ["patch", "ablate", "layer_sweep", "position_sweep", "dose_response", "contrastive_control", "bidirectional_patch"]:
+            if delta > 0.0 or abs(m_delta) > 0.5:
                 evidence.supporting_experiments.append(result.experiment_id)
-                evidence.evidence_type = "intervention"
                 
-                if is_attention_head_claim:
-                    evidence.status = "unresolved"
+                if result.experiment_type in ["dose_response", "contrastive_control", "bidirectional_patch"]:
+                    evidence.evidence_type = "mechanism_discriminating"
+                    evidence.evidence_strength = "strong"
+                    evidence.status = "mechanism_discriminating"
+                    evidence.updated_confidence = "high"
+                    evidence.rationale = (
+                        f"Discriminating tool [{result.experiment_type}] at Layer {result.layer_idx} produced a significant "
+                        f"logprob margin shift (margin_delta={m_delta:.2f}, effect_size={result.effect_size:.2f}), providing "
+                        f"strong evidence separating representation vs routing mechanism."
+                    )
+                elif is_attention_head_claim:
+                    evidence.evidence_type = "intervention"
+                    evidence.status = "weakly_supported"
                     evidence.evidence_strength = "weak"
                     evidence.updated_confidence = "medium"
                     evidence.rationale = (
-                        f"Residual-stream patch at Layer {result.layer_idx} caused a behavioral shift (delta={delta:.2f}), "
-                        f"confirming causal relevance of the layer representation. However, evidence for specific "
-                        f"attention-head mechanisms remains indirect/inconclusive."
+                        f"Residual-stream intervention at Layer {result.layer_idx} caused a shift (margin_delta={m_delta:.2f}, "
+                        f"behavioral_delta={delta:.2f}), confirming layer representation relevance. However, attention-head claim "
+                        f"remains only weakly supported without sub-component isolation."
                     )
                 else:
+                    evidence.evidence_type = "intervention"
                     evidence.status = "supported"
                     evidence.evidence_strength = "moderate"
                     evidence.updated_confidence = "high" if evidence.prior_confidence in ["medium", "high"] else "medium"
                     evidence.rationale = (
-                        f"Residual-stream patch at Layer {result.layer_idx} caused a behavioral shift toward source answer (delta={delta:.2f}), "
-                        f"establishing moderate intervention evidence for causal relevance of the layer residual representation."
+                        f"Residual-stream intervention at Layer {result.layer_idx} caused a significant shift toward expected outcome "
+                        f"(margin_delta={m_delta:.2f}, behavioral_delta={delta:.2f}), establishing moderate intervention evidence for representation relevance."
                     )
             else:
-                # Zero delta is treated as non-informative/unresolved regarding hypothesis mechanism
-                if evidence.status != "supported":
+                if evidence.status not in ["supported", "mechanism_discriminating"]:
                     evidence.status = "unresolved"
                 evidence.evidence_strength = "weak"
                 evidence.rationale = (
-                    f"Residual-stream patch at Layer {result.layer_idx} produced zero behavioral shift (delta={delta:.2f}). "
-                    f"This result is non-informative regarding the hypothesis mechanism and leaves evidence status unresolved."
-                )
-                
-        elif result.experiment_type == "ablate":
-            if delta > 0.0:
-                evidence.supporting_experiments.append(result.experiment_id)
-                evidence.evidence_type = "intervention"
-                
-                if is_attention_head_claim:
-                    evidence.status = "unresolved"
-                    evidence.evidence_strength = "weak"
-                    evidence.rationale = (
-                        f"Zero-ablation at Layer {result.layer_idx} altered baseline generation (delta={delta:.2f}), "
-                        f"demonstrating causal sensitivity of Layer {result.layer_idx}. It does NOT specifically isolate individual attention heads."
-                    )
-                else:
-                    evidence.status = "supported"
-                    evidence.evidence_strength = "moderate"
-                    evidence.rationale = (
-                        f"Zero-ablation of residual activation at Layer {result.layer_idx} disrupted baseline generation (delta={delta:.2f}), "
-                        f"providing moderate intervention evidence for layer representation relevance."
-                    )
-            else:
-                # Zero delta is treated as non-informative/unresolved
-                if evidence.status != "supported":
-                    evidence.status = "unresolved"
-                evidence.evidence_strength = "weak"
-                evidence.rationale = (
-                    f"Zero-ablation of residual activation at Layer {result.layer_idx} produced zero behavioral shift (delta={delta:.2f}). "
-                    f"This result is non-informative regarding the hypothesis mechanism and leaves evidence status unresolved."
+                    f"Intervention [{result.experiment_type}] produced minimal shift (margin_delta={m_delta:.2f}, delta={delta:.2f}). "
+                    f"Result is non-informative regarding hypothesis mechanism and leaves status unresolved."
                 )
 
     def _generate_mock_experiment_requests(self, case: FailureCase, hypotheses: HypothesisSet) -> List[ExperimentRequest]:
@@ -479,31 +567,31 @@ class CausalInvestigatorAgent:
         req1 = ExperimentRequest(
             experiment_id="exp_001",
             hypothesis_id=1,
-            experiment_type="patch",
+            experiment_type="tokenize_prompt",
+            prompt=case.prompt,
+            rationale="Establish token alignment map for source and target prompt analysis."
+        )
+        req2 = ExperimentRequest(
+            experiment_id="exp_002",
+            hypothesis_id=1,
+            experiment_type="dose_response",
             prompt=case.prompt,
             source_prompt="The capital of France is",
             layer_idx=12,
             position_idx=3,
             target_position_idx=3,
             candidate_tokens=["Rome", "Paris"],
-            rationale="Test whether residual stream activation patching at Layer 12 transfers source factual representation."
-        )
-        req2 = ExperimentRequest(
-            experiment_id="exp_002",
-            hypothesis_id=2,
-            experiment_type="ablate",
-            prompt=case.prompt,
-            layer_idx=12,
-            position_idx=3,
-            candidate_tokens=["Rome", "Paris"],
-            rationale="Test whether zero-ablating residual activation at Layer 12 alters baseline generation."
+            rationale="Test dose-response interpolation curve alpha in [0.0..1.0] at Layer 12."
         )
         req3 = ExperimentRequest(
             experiment_id="exp_003",
-            hypothesis_id=3,
-            experiment_type="run_target",
+            hypothesis_id=2,
+            experiment_type="layer_sweep",
             prompt=case.prompt,
+            start_layer=0,
+            end_layer=24,
+            step_layer=8,
             candidate_tokens=["Rome", "Paris"],
-            rationale="Establish un-intervened baseline behavior for target model on failure case."
+            rationale="Sweep layers to identify critical intervention depth."
         )
         return [req1, req2, req3]

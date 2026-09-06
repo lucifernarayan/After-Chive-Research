@@ -237,6 +237,129 @@ class TestCausalInvestigator(unittest.TestCase):
         record = agent.investigate(self.sample_case, self.hypotheses, sandbox)
         self.assertLessEqual(len(record.experiments), 1)
 
+    def test_expanded_sandbox_primitives(self):
+        """Verify new tool primitives (tokenize_prompt, layer_sweep, dose_response, contrastive_control, bidirectional_patch)."""
+        target = GemmaTargetInterface(mock=True)
+        sandbox = InvestigationSandbox(
+            target_model=target,
+            budget=InvestigationBudget(max_experiments=20, max_target_calls=50, max_interventions=30),
+            case_id="case_primitives"
+        )
+
+        # 1. Tokenize prompt
+        res_tok = sandbox.tokenize_prompt("Hello world test prompt")
+        self.assertEqual(res_tok.experiment_type, "tokenize_prompt")
+        self.assertIsNotNone(res_tok.token_alignment)
+        self.assertGreater(len(res_tok.token_alignment), 0)
+
+        # 2. Dose response
+        res_dose = sandbox.dose_response(
+            source_prompt="Source prompt text",
+            target_prompt="Target prompt text",
+            layer_idx=12,
+            candidate_tokens=["Rome", "Paris"]
+        )
+        self.assertEqual(res_dose.experiment_type, "dose_response")
+        self.assertIsNotNone(res_dose.dose_response_curve)
+        self.assertIn("1.00", res_dose.dose_response_curve)
+
+        # 3. Contrastive control
+        res_ctrl = sandbox.contrastive_control(
+            source_prompt="Source text",
+            control_prompt="Control text",
+            target_prompt="Target text",
+            layer_idx=12,
+            candidate_tokens=["Rome", "Paris"]
+        )
+        self.assertEqual(res_ctrl.experiment_type, "contrastive_control")
+        self.assertEqual(res_ctrl.evidence_type, "mechanism_discriminating")
+
+        # 4. Bidirectional patch
+        res_bi = sandbox.bidirectional_patch(
+            prompt_a="Prompt A text",
+            prompt_b="Prompt B text",
+            layer_idx=12,
+            candidate_tokens=["Rome", "Paris"]
+        )
+        self.assertEqual(res_bi.experiment_type, "bidirectional_patch")
+        self.assertEqual(res_bi.evidence_type, "mechanism_discriminating")
+
+    def test_logprob_margin_delta_computation(self):
+        """Verify continuous logprob metrics (margin delta & effect size) in patch experiment result."""
+        target = GemmaTargetInterface(mock=True)
+        sandbox = InvestigationSandbox(
+            target_model=target,
+            budget=InvestigationBudget(max_experiments=10, max_target_calls=20, max_interventions=10),
+            case_id="case_metrics"
+        )
+
+        res = sandbox.patch_activation(
+            source_prompt="Capital of France is",
+            target_prompt="Capital of Italy is",
+            layer_idx=12,
+            source_pos=2,
+            target_pos=2,
+            candidate_tokens=["Rome", "Paris"]
+        )
+        self.assertIsNotNone(res.candidate_logprobs)
+        self.assertIsNotNone(res.candidate_margin_delta)
+        self.assertIsNotNone(res.effect_size)
+
+    def test_evidence_status_mechanism_discriminating(self):
+        """Verify evidence status maps to mechanism_discriminating when discriminating tool is executed."""
+        agent = CausalInvestigatorAgent(mock=True)
+        ev = HypothesisEvidence(
+            hypothesis_id=1,
+            claim="Routing mechanism",
+            mechanism_guess="Attention routing override",
+            prior_confidence="high",
+            supporting_experiments=[],
+            contradicting_experiments=[],
+            evidence_type="intervention",
+            evidence_strength="weak",
+            updated_confidence="high",
+            status="unresolved",
+            max_margin_delta=0.0,
+            rationale="Initial"
+        )
+
+        res = ExperimentResult(
+            investigation_id="inv_01",
+            experiment_id="exp_01",
+            hypothesis_id=1,
+            experiment_type="dose_response",
+            prompt="Prompt",
+            baseline_output="Out Base",
+            intervened_output="Out Dose",
+            candidate_margin_delta=2.5,
+            effect_size=0.625,
+            observed_behavioral_delta=5.0,
+            timestamp="2026-09-07T00:00:00Z"
+        )
+
+        agent._update_evidence(ev, res)
+        self.assertEqual(ev.status, "mechanism_discriminating")
+        self.assertEqual(ev.evidence_strength, "strong")
+        self.assertEqual(ev.evidence_type, "mechanism_discriminating")
+
+    def test_qualify_case_returns_boolean_flags(self):
+        """Verify qualify_case script returns original_failure_verified, hidden_behavior_distinct, and case_qualified flags."""
+        from scripts.qualify_cases import qualify_case
+        target = GemmaTargetInterface(mock=True)
+        sample = {
+            "case_id": "test_qual_01",
+            "failure_family": "negation",
+            "original_prompt": "Prompt A",
+            "hidden_variant": "Prompt B",
+            "candidate_labels": ["Rome", "Paris"]
+        }
+        res = qualify_case(sample, target)
+        self.assertIn("original_failure_verified", res)
+        self.assertIn("hidden_behavior_distinct", res)
+        self.assertIn("case_qualified", res)
+        self.assertTrue(res["case_qualified"])
+
 
 if __name__ == "__main__":
     unittest.main()
+

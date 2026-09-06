@@ -120,24 +120,50 @@ class GemmaTargetInterface:
         text = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
         return captured[0], text, logprobs
 
-    def patch_activation(
+    def tokenize_prompt(self, prompt: str) -> List[Dict[str, Any]]:
+        """
+        Tokenize prompt and return exact token alignment map:
+        List of {"position": idx, "token_id": token_id, "token_text": token_str}
+        """
+        if self.mock:
+            tokens = prompt.split()
+            return [
+                {"position": idx, "token_id": 100 + idx, "token_text": tok}
+                for idx, tok in enumerate(tokens)
+            ]
+
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+        input_ids = inputs["input_ids"][0].tolist()
+        result = []
+        for idx, tid in enumerate(input_ids):
+            text = self.tokenizer.decode([tid])
+            result.append({"position": idx, "token_id": tid, "token_text": text})
+        return result
+
+    def patch_interpolation(
         self, 
         source_prompt: str, 
         target_prompt: str, 
         layer_idx: int, 
         source_pos: int, 
         target_pos: int,
+        alpha: float = 1.0,
         candidate_tokens: Optional[List[str]] = None
     ) -> Tuple[str, str, float, torch.Tensor, Optional[Dict[str, float]]]:
         """
-        Capture residual activation from source_prompt at source_pos,
-        and replace residual activation in target_prompt at target_pos during forward pass.
+        Interpolated activation patching: h_intervened = (1 - alpha) * h_target + alpha * h_source.
+        alpha=1.0 is full patching, alpha=0.0 is baseline target.
         """
         if self.mock:
             base_out = target_prompt + " Rome."
-            patch_out = target_prompt + " Paris."
+            patch_out = target_prompt + f" Paris (alpha={alpha:.2f})." if alpha > 0 else target_prompt + " Rome."
             logprobs = self._compute_candidate_logprobs(target_prompt, candidate_tokens) if candidate_tokens else None
-            return base_out, patch_out, 35.5, torch.randn(1, 1, 2304), logprobs
+            if logprobs and len(candidate_tokens or []) >= 2 and alpha < 1.0:
+                c0 = candidate_tokens[0]
+                c1 = candidate_tokens[1]
+                logprobs[c0] = round(logprobs[c0] * (1.0 - alpha * 0.5), 4)
+                logprobs[c1] = round(logprobs[c1] * alpha, 4)
+            return base_out, patch_out, round(35.5 * alpha, 4), torch.randn(1, 1, 2304), logprobs
 
         source_tensor, _, _ = self.capture_activation(source_prompt, layer_idx, source_pos)
         target_baseline, _ = self.run_inference(target_prompt)
@@ -152,13 +178,17 @@ class GemmaTargetInterface:
             if isinstance(output, tuple):
                 hidden = output[0].clone()
                 orig = hidden[:, t_pos:t_pos+1, :].clone()
-                hidden[:, t_pos:t_pos+1, :] = source_tensor.to(hidden.device, dtype=hidden.dtype)
+                src = source_tensor.to(hidden.device, dtype=hidden.dtype)
+                blended = (1.0 - alpha) * orig + alpha * src
+                hidden[:, t_pos:t_pos+1, :] = blended
                 delta_norms.append(torch.norm(hidden[:, t_pos:t_pos+1, :] - orig).item())
                 return (hidden,) + output[1:]
             else:
                 hidden = output.clone()
                 orig = hidden[:, t_pos:t_pos+1, :].clone()
-                hidden[:, t_pos:t_pos+1, :] = source_tensor.to(hidden.device, dtype=hidden.dtype)
+                src = source_tensor.to(hidden.device, dtype=hidden.dtype)
+                blended = (1.0 - alpha) * orig + alpha * src
+                hidden[:, t_pos:t_pos+1, :] = blended
                 delta_norms.append(torch.norm(hidden[:, t_pos:t_pos+1, :] - orig).item())
                 return hidden
 
@@ -166,7 +196,6 @@ class GemmaTargetInterface:
         with torch.no_grad():
             gen_ids = self.model.generate(**inputs, max_new_tokens=10, do_sample=False)
             
-            # If candidate tokens provided, run single forward pass under intervention to compute logprobs
             logprobs = None
             if candidate_tokens:
                 outputs = self.model(**inputs)
@@ -183,6 +212,29 @@ class GemmaTargetInterface:
         delta_norm = delta_norms[0] if delta_norms else 0.0
 
         return target_baseline, patched_out, delta_norm, source_tensor, logprobs
+
+    def patch_activation(
+        self, 
+        source_prompt: str, 
+        target_prompt: str, 
+        layer_idx: int, 
+        source_pos: int, 
+        target_pos: int,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> Tuple[str, str, float, torch.Tensor, Optional[Dict[str, float]]]:
+        """
+        Capture residual activation from source_prompt at source_pos,
+        and replace residual activation in target_prompt at target_pos during forward pass.
+        """
+        return self.patch_interpolation(
+            source_prompt=source_prompt,
+            target_prompt=target_prompt,
+            layer_idx=layer_idx,
+            source_pos=source_pos,
+            target_pos=target_pos,
+            alpha=1.0,
+            candidate_tokens=candidate_tokens
+        )
 
     def ablate_activation(
         self, 
