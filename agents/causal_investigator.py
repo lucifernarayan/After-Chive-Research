@@ -1,6 +1,6 @@
 """
 Agent #2: Causal Investigator Agent.
-Uses Gemini 3.8 Flash to evaluate Agent #1 hypotheses by executing controlled activation experiments in InvestigationSandbox,
+Uses Gemini 3.7 Flash to evaluate Agent #1 hypotheses by executing controlled activation experiments in InvestigationSandbox,
 and formulates a frozen blind prediction prior to hidden variant revelation.
 """
 
@@ -21,6 +21,7 @@ from schemas.investigation import (
 from schemas.predictions import BlindPrediction
 from interventions.sandbox import InvestigationSandbox, BudgetExhaustedError
 from agents.hypothesis_agent import GeminiRateLimitError, GeminiUnavailableError
+from config import DEFAULT_INVESTIGATOR_MODEL
 
 
 class CausalInvestigatorAgent:
@@ -36,7 +37,7 @@ class CausalInvestigatorAgent:
 
     def __init__(
         self, 
-        model_name: str = "gemini-3.8-flash", 
+        model_name: str = DEFAULT_INVESTIGATOR_MODEL, 
         max_retries: int = 5,
         base_delay: float = 2.0,
         mock: bool = False

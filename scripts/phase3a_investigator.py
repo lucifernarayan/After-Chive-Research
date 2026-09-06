@@ -2,7 +2,7 @@
 Phase 3A Execution Script: Causal Investigator Agent (Agent #2) & Sandbox.
 
 Target Model: google/gemma-2-2b-it
-Investigator Model: gemini-3.8-flash
+Investigator Model: gemini-3.7-flash
 
 Executes symmetric comparison pipeline:
 - Branch 1: Agent #1 Transcript-Only Baseline Blind Prediction
@@ -29,6 +29,7 @@ from target.gemma import GemmaTargetInterface
 from agents.hypothesis_agent import HypothesisGeneratorAgent
 from agents.causal_investigator import CausalInvestigatorAgent
 from experiments.investigation_experiment import InvestigationExperimentRunner
+from config import DEFAULT_INVESTIGATOR_MODEL
 
 
 def run_phase3a(mock_gemma=False, mock_gemini=False):
@@ -43,7 +44,7 @@ def run_phase3a(mock_gemma=False, mock_gemini=False):
     key_present = api_key is not None and len(api_key.strip()) > 0
 
     print(f"  Target Model      : google/gemma-2-2b-it (Mode: {'MOCK' if mock_gemma else 'FULL HF TRANSFORMERS'})")
-    print(f"  Investigator Model: gemini-3.8-flash (Mode: {'MOCK' if mock_gemini else 'REAL GEMINI API'})")
+    print(f"  Investigator Model: {DEFAULT_INVESTIGATOR_MODEL} (Mode: {'MOCK' if mock_gemini else 'REAL GEMINI API'})")
     print(f"  Compute Device    : {device}")
     print(f"  GEMINI_API_KEY    : {'PRESENT' if key_present else 'NOT SET'}")
 
@@ -55,8 +56,8 @@ def run_phase3a(mock_gemma=False, mock_gemini=False):
     target_interface = GemmaTargetInterface(model_id="google/gemma-2-2b-it", mock=mock_gemma)
 
     # 2. Instantiate Agent #1 Hypothesis Generator & Agent #2 Causal Investigator
-    agent1 = HypothesisGeneratorAgent(model_name="gemini-3.8-flash", mock=mock_gemini)
-    agent2 = CausalInvestigatorAgent(model_name="gemini-3.8-flash", mock=mock_gemini)
+    agent1 = HypothesisGeneratorAgent(model_name=DEFAULT_INVESTIGATOR_MODEL, mock=mock_gemini)
+    agent2 = CausalInvestigatorAgent(model_name=DEFAULT_INVESTIGATOR_MODEL, mock=mock_gemini)
 
     # 3. Run Comparative Investigation Validation Suite
     runner = InvestigationExperimentRunner(agent1=agent1, agent2=agent2, target_model=target_interface)

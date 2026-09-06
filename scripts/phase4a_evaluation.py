@@ -8,7 +8,7 @@ on the frozen 15-case dataset across 3 failure families:
 3. Output-Format / Constraint Failures (5 cases)
 
 Target Model      : google/gemma-2-2b-it
-Investigator Model: gemini-3.8-flash
+Investigator Model: gemini-3.7-flash
 
 Features:
 - Atomic per-case persistence (saves result to disk immediately after each completed case).
@@ -34,6 +34,7 @@ from agents.causal_investigator import CausalInvestigatorAgent
 from interventions.sandbox import InvestigationSandbox, InvestigationBudget
 from security.hidden_vault import HiddenTestVault
 from schemas.hypotheses import FailureCase
+from config import DEFAULT_INVESTIGATOR_MODEL, PHASE4A_RESULTS_PATH, PHASE4A_SUMMARY_PATH
 
 
 def _save_checkpoint(
@@ -122,7 +123,7 @@ def _save_checkpoint(
     aggregate_metrics = {
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "target_model_name": "google/gemma-2-2b-it",
-        "investigator_model_name": "gemini-3.8-flash",
+        "investigator_model_name": DEFAULT_INVESTIGATOR_MODEL,
         "execution_mode": "mock" if is_mock else "real",
         "total_cases": total_cases,
         "completed_cases": completed_cases,
@@ -179,8 +180,8 @@ def run_phase4a_evaluation(
     mock_gemma: bool = False,
     mock_gemini: bool = False,
     cases_path: str = "cases/evaluation_cases.json",
-    results_path: str = "results/phase4a_real_results.json",
-    summary_path: str = "results/phase4a_real_summary.json"
+    results_path: str = PHASE4A_RESULTS_PATH,
+    summary_path: str = PHASE4A_SUMMARY_PATH
 ) -> Dict[str, Any]:
     start_total_time = time.time()
     
@@ -251,8 +252,8 @@ def run_phase4a_evaluation(
 
     # Instantiate Target Interface, Agents, and Vault
     target_interface = GemmaTargetInterface(model_id="google/gemma-2-2b-it", mock=mock_gemma)
-    agent1 = HypothesisGeneratorAgent(model_name="gemini-3.8-flash", mock=mock_gemini)
-    agent2 = CausalInvestigatorAgent(model_name="gemini-3.8-flash", mock=mock_gemini)
+    agent1 = HypothesisGeneratorAgent(model_name=DEFAULT_INVESTIGATOR_MODEL, mock=mock_gemini)
+    agent2 = CausalInvestigatorAgent(model_name=DEFAULT_INVESTIGATOR_MODEL, mock=mock_gemini)
     vault = HiddenTestVault()
 
     if not (mock_gemma or mock_gemini):
@@ -411,8 +412,8 @@ if __name__ == "__main__":
     parser.add_argument("--mock-gemma", action="store_true", help="Run Gemma target model in mock mode")
     parser.add_argument("--mock-gemini", action="store_true", help="Run Agent 1 and Agent 2 in mock mode")
     parser.add_argument("--cases-path", type=str, default="cases/evaluation_cases.json", help="Path to cases JSON")
-    parser.add_argument("--results-path", type=str, default="results/phase4a_real_results.json", help="Path to detailed results JSON")
-    parser.add_argument("--summary-path", type=str, default="results/phase4a_real_summary.json", help="Path to summary JSON")
+    parser.add_argument("--results-path", type=str, default=PHASE4A_RESULTS_PATH, help="Path to detailed results JSON")
+    parser.add_argument("--summary-path", type=str, default=PHASE4A_SUMMARY_PATH, help="Path to summary JSON")
     args = parser.parse_args()
 
     run_phase4a_evaluation(

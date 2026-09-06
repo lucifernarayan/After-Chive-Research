@@ -1,7 +1,7 @@
 """
 Agent #1: Transcript-Only Gemini Hypothesis Generator & Baseline Predictor.
 Uses Google GenAI SDK to produce structured, falsifiable causal hypotheses and baseline blind predictions from failure transcripts.
-Target Model: gemini-3.8-flash (Fixed model with bounded exponential backoff retries)
+Target Model: gemini-3.7-flash (Fixed model with bounded exponential backoff retries)
 """
 
 import os
@@ -12,6 +12,7 @@ import datetime
 from typing import Optional, Dict, Any
 from schemas.hypotheses import FailureCase, Hypothesis, HypothesisSet, Agent1GenerationRecord
 from schemas.predictions import BlindPrediction
+from config import DEFAULT_INVESTIGATOR_MODEL
 
 
 class GeminiRateLimitError(Exception):
@@ -38,7 +39,7 @@ class HypothesisGeneratorAgent:
 
     def __init__(
         self, 
-        model_name: str = "gemini-3.8-flash", 
+        model_name: str = DEFAULT_INVESTIGATOR_MODEL, 
         max_retries: int = 5,
         base_delay: float = 2.0,
         mock: bool = False

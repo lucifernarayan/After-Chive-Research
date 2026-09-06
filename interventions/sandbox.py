@@ -27,6 +27,7 @@ from schemas.investigation import (
     InvestigationRecord
 )
 from target.gemma import GemmaTargetInterface
+from config import DEFAULT_INVESTIGATOR_MODEL
 
 
 class BudgetExhaustedError(Exception):
@@ -56,7 +57,7 @@ class InvestigationSandbox:
             investigation_id=self.investigation_id,
             case_id=self.case_id,
             target_model_name=self.target.model_id,
-            investigator_model_name="gemini-3.8-flash",
+            investigator_model_name=DEFAULT_INVESTIGATOR_MODEL,
             timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             budget_status=self.budget,
             experiments=[],

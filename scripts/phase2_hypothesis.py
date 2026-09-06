@@ -1,6 +1,6 @@
 """
 Phase 2 Execution Script: Transcript-Only Gemini Hypothesis Agent (Agent #1).
-Default Model: gemini-3.8-flash (Fixed model with bounded exponential backoff retries)
+Default Model: gemini-3.7-flash (Fixed model with bounded exponential backoff retries)
 
 Executes hypothesis generation across synthetic validation cases, evaluates schema compliance,
 falsifiability, distinctness, and saves results JSON.
@@ -16,9 +16,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from agents.hypothesis_agent import HypothesisGeneratorAgent
 from experiments.hypothesis_experiment import HypothesisExperimentRunner
+from config import DEFAULT_INVESTIGATOR_MODEL
 
 
-def run_phase2(model_name="gemini-3.8-flash", mock=False):
+def run_phase2(model_name=DEFAULT_INVESTIGATOR_MODEL, mock=False):
     print("=" * 80)
     print("  PROJECT: CAUSAL MECHANISTIC INVESTIGATOR - PHASE 2 HYPOTHESIS AGENT")
     print("=" * 80)

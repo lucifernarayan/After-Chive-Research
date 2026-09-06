@@ -4,6 +4,7 @@ Pydantic schemas for Phase 3A: Causal Investigator Agent (Agent #2) & Investigat
 
 from typing import List, Literal, Optional, Dict, Any
 from pydantic import BaseModel, Field
+from config import DEFAULT_INVESTIGATOR_MODEL
 
 
 class InvestigationBudget(BaseModel):
@@ -74,7 +75,7 @@ class ExperimentResult(BaseModel):
 
     timestamp: str = Field(..., description="ISO 8601 execution timestamp")
     target_model_name: str = Field(default="google/gemma-2-2b-it", description="Target model ID")
-    investigator_model_name: str = Field(default="gemini-3.8-flash", description="Investigator model ID")
+    investigator_model_name: str = Field(default=DEFAULT_INVESTIGATOR_MODEL, description="Investigator model ID")
 
 
 class HypothesisEvidence(BaseModel):
@@ -106,7 +107,7 @@ class InvestigationRecord(BaseModel):
     investigation_id: str
     case_id: str
     target_model_name: str = "google/gemma-2-2b-it"
-    investigator_model_name: str = "gemini-3.8-flash"
+    investigator_model_name: str = DEFAULT_INVESTIGATOR_MODEL
     timestamp: str
     budget_status: InvestigationBudget
     experiments: List[ExperimentResult] = Field(default_factory=list)
