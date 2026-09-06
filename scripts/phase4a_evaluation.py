@@ -8,7 +8,7 @@ on the frozen 15-case dataset across 3 failure families:
 3. Output-Format / Constraint Failures (5 cases)
 
 Target Model      : google/gemma-2-2b-it
-Investigator Model: gemini-3.7-flash
+Investigator Model: openai/gpt-5.6-luna (via OpenRouter)
 
 Features:
 - Atomic per-case persistence (saves result to disk immediately after each completed case).
@@ -29,7 +29,13 @@ import torch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from target.gemma import GemmaTargetInterface
-from agents.hypothesis_agent import HypothesisGeneratorAgent, GeminiRateLimitError, GeminiUnavailableError
+from agents.hypothesis_agent import (
+    HypothesisGeneratorAgent, 
+    OpenRouterRateLimitError, 
+    OpenRouterUnavailableError, 
+    GeminiRateLimitError, 
+    GeminiUnavailableError
+)
 from agents.causal_investigator import CausalInvestigatorAgent
 from interventions.sandbox import InvestigationSandbox, InvestigationBudget
 from security.hidden_vault import HiddenTestVault
@@ -204,13 +210,13 @@ def run_phase4a_evaluation(
     cuda_ok = torch.cuda.is_available()
     hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
     hf_ok = hf_token is not None and len(hf_token.strip()) > 0
-    api_key = os.environ.get("GEMINI_API_KEY")
-    gemini_ok = api_key is not None and len(api_key.strip()) > 0
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    openrouter_ok = api_key is not None and len(api_key.strip()) > 0
 
     print("REAL MODE ASSERTIONS:")
     print(f"  CUDA                  : {'PASS' if cuda_ok else 'FAIL'}")
     print(f"  HF_TOKEN              : {'PRESENT' if hf_ok else 'MISSING'}")
-    print(f"  GEMINI_API_KEY        : {'PRESENT' if gemini_ok else 'MISSING'}")
+    print(f"  OPENROUTER_API_KEY    : {'PRESENT' if openrouter_ok else 'MISSING'}")
     print(f"  Target mock mode      : {mock_gemma}")
     print(f"  Investigator mock mode: {mock_gemini}")
 
@@ -219,8 +225,8 @@ def run_phase4a_evaluation(
             raise RuntimeError("CUDA is unavailable. Real evaluation requires CUDA GPU.")
         if not hf_ok:
             raise RuntimeError("HF_TOKEN environment variable is missing. Real evaluation requires Hugging Face authentication.")
-        if not gemini_ok:
-            raise RuntimeError("GEMINI_API_KEY environment variable is missing. Real evaluation requires Gemini API key.")
+        if not openrouter_ok:
+            raise RuntimeError("OPENROUTER_API_KEY environment variable is missing. Real evaluation requires OpenRouter API key.")
 
     # 1. RESUME SUPPORT: Load existing completed cases from results_path if present
     case_records = []
@@ -375,7 +381,7 @@ def run_phase4a_evaluation(
             print(f"  Ground Truth Label : '{scoring.actual_hidden_label}'")
             print(f"  [PERSISTED ATOMICALLY] Case '{c_id}' saved to disk. Total completed: {len(case_records)}/{len(case_specs)}.")
 
-        except (GeminiRateLimitError, GeminiUnavailableError) as e:
+        except (OpenRouterRateLimitError, OpenRouterUnavailableError, GeminiRateLimitError, GeminiUnavailableError) as e:
             print(f"\n  [API TERMINATION] Case '{c_id}' interrupted by API restriction: {e}")
             print(f"  [CLEAN TERMINATION] Preserving {len(case_records)} completed cases to '{results_path}'.")
             break

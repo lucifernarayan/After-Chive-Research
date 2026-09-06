@@ -6,7 +6,7 @@ Preliminary AI safety & mechanistic interpretability research prototype investig
 ## 1. Project Specifications
 
 * **Target Model**: `google/gemma-2-2b-it` (Standardized for N≈15 preliminary benchmark).
-* **Investigator Model**: `gemini-3.7-flash` via Google GenAI SDK (`google-genai`).
+* **Investigator Model**: `openai/gpt-5.6-luna` via OpenRouter OpenAI SDK (`OPENROUTER_API_KEY`).
 * **Experimental Conditions**:
   1. **Condition A**: Transcript-Only Baseline (Agent #1: No activation access, no intervention tools).
   2. **Condition B**: Causal-Intervention Investigator (Agent #2: Residual-stream activation patching, controlled sandbox, hard blind-prediction firewall).
@@ -155,13 +155,15 @@ python scripts/qualify_cases.py
 
 ## 9. Phase 4A: Real 15-Case Blind Comparative Evaluation
 
-Phase 4A executes the full comparative benchmark across the frozen 15-case dataset (`cases/evaluation_cases.json`) using `gemini-3.7-flash` as the Gemini investigator model.
+Phase 4A executes the full comparative benchmark across the frozen 15-case dataset (`cases/evaluation_cases.json`) using `openai/gpt-5.6-luna` via OpenRouter as the investigator LLM.
 
 ### API Consumption & Rate-Limit Protocol:
-- **Investigator Model**: `gemini-3.7-flash`
-- **Expected Requests**: Exactly **45 Gemini API `generate_content` calls** for 15 cases (3 calls/case: Agent 1 hypothesis generation, Agent 1 blind prediction, Agent 2 blind prediction).
-- **Free-Tier Constraints**: The benchmark is executed strictly under free-tier API rate limits (15 RPM / 1500 RPD).
-- **No Model Fallback**: If rate limits or quota limits occur, execution terminates cleanly with preserved atomic checkpoints. No silent model fallback or automatic model switching is performed.
+- **Investigator Provider**: OpenRouter (`OPENROUTER_API_KEY`)
+- **Investigator Model**: `openai/gpt-5.6-luna`
+- **Target Model**: `google/gemma-2-2b-it` (PyTorch hooks locally, 0 LLM calls)
+- **Expected Requests**: Exactly **45 OpenRouter API requests** for 15 cases (3 calls/case: Agent 1 hypothesis generation, Agent 1 blind prediction, Agent 2 blind prediction).
+- **Rate-Limit & Retry Handling**: Bounded exponential backoff on transient errors (HTTP 500, 502, 503, 504) with clean termination on rate limits (HTTP 429) preserving atomic checkpoints.
+- **No Model Fallback**: No silent fallback or automatic model switching is performed.
 
 ### Evaluation Pipeline Flow per Case:
 1. **Public Input**: Agent #1 and Agent #2 receive identical public case specs (task description, prompt, model response, failure description, expected behavior).
@@ -171,15 +173,19 @@ Phase 4A executes the full comparative benchmark across the frozen 15-case datas
 5. **Target Execution & Scoring**: Target model executes hidden variant prompt, and `HiddenTestVault.reveal_and_evaluate()` deterministically scores both predictions.
 
 ### Output Files:
-* `results/phase4a_gemini37_real_results.json`: Detailed per-case records (hypotheses, experiment trajectories, predictions, hidden variant outcomes, candidate logprobs, elapsed times).
-* `results/phase4a_gemini37_real_summary.json`: Summary metrics report ($\Delta Acc$, family breakdown, contingency breakdown, Brier scores).
+* `results/phase4a_openrouter_luna_real_results.json`: Detailed per-case records (hypotheses, experiment trajectories, predictions, hidden variant outcomes, candidate logprobs, elapsed times).
+* `results/phase4a_openrouter_luna_real_summary.json`: Summary metrics report ($\Delta Acc$, family breakdown, contingency breakdown, Brier scores).
 
 ### Execution Commands:
 ```bash
-# Run dry-run mock mode validation
+# Run standalone OpenRouter API smoke test (1 test call)
+python scripts/smoke_test_openrouter.py --mock   # Mock mode
+python scripts/smoke_test_openrouter.py          # Real API call (Requires OPENROUTER_API_KEY)
+
+# Run dry-run mock mode evaluation
 python scripts/phase4a_evaluation.py --mock-gemma --mock-gemini
 
-# Run real benchmark evaluation (Requires GPU and GEMINI_API_KEY)
+# Run real benchmark evaluation (Requires CUDA GPU, HF_TOKEN, and OPENROUTER_API_KEY)
 python scripts/phase4a_evaluation.py
 ```
 

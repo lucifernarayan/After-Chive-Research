@@ -41,7 +41,7 @@ class TestPhase4ASafety(unittest.TestCase):
         self.temp_dir.cleanup()
 
     @patch("torch.cuda.is_available", return_value=False)
-    @patch.dict(os.environ, {"GEMINI_API_KEY": "test_key", "HF_TOKEN": "test_token"})
+    @patch.dict(os.environ, {"OPENROUTER_API_KEY": "test_key", "HF_TOKEN": "test_token"})
     def test_real_mode_assertions_cuda_missing(self, mock_cuda):
         """Test that running real evaluation without CUDA raises RuntimeError."""
         with self.assertRaises(RuntimeError) as ctx:
@@ -57,7 +57,7 @@ class TestPhase4ASafety(unittest.TestCase):
     @patch("torch.cuda.is_available", return_value=True)
     @patch.dict(os.environ, {"HF_TOKEN": "test_token"}, clear=True)
     def test_real_mode_assertions_api_key_missing(self, mock_cuda):
-        """Test that running real evaluation without GEMINI_API_KEY raises RuntimeError."""
+        """Test that running real evaluation without OPENROUTER_API_KEY raises RuntimeError."""
         with self.assertRaises(RuntimeError) as ctx:
             run_phase4a_evaluation(
                 mock_gemma=False,
@@ -66,10 +66,10 @@ class TestPhase4ASafety(unittest.TestCase):
                 results_path=self.results_file,
                 summary_path=self.summary_file
             )
-        self.assertIn("GEMINI_API_KEY environment variable is missing", str(ctx.exception))
+        self.assertIn("OPENROUTER_API_KEY environment variable is missing", str(ctx.exception))
 
     @patch("torch.cuda.is_available", return_value=True)
-    @patch.dict(os.environ, {"GEMINI_API_KEY": "test_key"}, clear=True)
+    @patch.dict(os.environ, {"OPENROUTER_API_KEY": "test_key"}, clear=True)
     def test_real_mode_assertions_hf_token_missing(self, mock_cuda):
         """Test that running real evaluation without HF_TOKEN raises RuntimeError."""
         with self.assertRaises(RuntimeError) as ctx:
@@ -119,7 +119,7 @@ class TestPhase4ASafety(unittest.TestCase):
 
         # Running real mode (will fail at CUDA check, but resume check happens before)
         with patch("torch.cuda.is_available", return_value=False):
-            with patch.dict(os.environ, {"GEMINI_API_KEY": "test_key", "HF_TOKEN": "test_token"}):
+            with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test_key", "HF_TOKEN": "test_token"}):
                 with self.assertRaises(RuntimeError) as ctx:
                     run_phase4a_evaluation(
                         mock_gemma=False,
