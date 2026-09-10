@@ -611,6 +611,6 @@ class GemmaTargetInterface:
 
         ablated_out = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
         delta_norm = delta_norms[0] if delta_norms else 0.0
-        return baseline_out, ablated_out, delta_norm, logprobs
+        return target_baseline, ablated_out, delta_norm, logprobs
 
 
