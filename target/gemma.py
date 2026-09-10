@@ -158,12 +158,13 @@ class GemmaTargetInterface:
             base_out = target_prompt + " Rome."
             patch_out = target_prompt + f" Paris (alpha={alpha:.2f})." if alpha > 0 else target_prompt + " Rome."
             logprobs = self._compute_candidate_logprobs(target_prompt, candidate_tokens) if candidate_tokens else None
-            if logprobs and len(candidate_tokens or []) >= 2 and alpha < 1.0:
+            if logprobs and len(candidate_tokens or []) >= 2 and 0.0 < alpha < 1.0:
                 c0 = candidate_tokens[0]
                 c1 = candidate_tokens[1]
                 logprobs[c0] = round(logprobs[c0] * (1.0 - alpha * 0.5), 4)
                 logprobs[c1] = round(logprobs[c1] * alpha, 4)
             return base_out, patch_out, round(35.5 * alpha, 4), torch.randn(1, 1, 2304), logprobs
+
 
         source_tensor, _, _ = self.capture_activation(source_prompt, layer_idx, source_pos)
         target_baseline, _ = self.run_inference(target_prompt)
@@ -296,4 +297,320 @@ class GemmaTargetInterface:
         delta_norm = delta_norms[0] if delta_norms else 0.0
 
         return baseline_out, ablated_out, delta_norm, logprobs
+
+    def attribution_localization(self, prompt: str, candidate_tokens: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """
+        Compute gradient/activation attribution localization scores across layers and positions.
+        Returns List of {"layer_idx": L, "position_idx": P, "token_text": T, "attribution_score": S}.
+        """
+        tokens = self.tokenize_prompt(prompt)
+        scores = []
+        if self.mock:
+            for layer in [4, 8, 12, 16, 20]:
+                for t in tokens:
+                    pos = t["position"]
+                    score = round(0.1 + (layer * 0.03) + (pos * 0.05), 4)
+                    scores.append({
+                        "layer_idx": layer,
+                        "position_idx": pos,
+                        "token_text": t["token_text"],
+                        "attribution_score": score
+                    })
+            scores.sort(key=lambda x: x["attribution_score"], reverse=True)
+            return scores
+
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        seq_len = inputs["input_ids"].shape[1]
+        
+        for layer_idx in range(0, min(26, len(self.model.model.layers)), 4):
+            layer = self.model.model.layers[layer_idx]
+            act_list = []
+            def h_fn(m, a, o):
+                val = o[0] if isinstance(o, tuple) else o
+                act_list.append(val.detach())
+            h = layer.register_forward_hook(h_fn)
+            with torch.no_grad():
+                self.model(**inputs)
+            h.remove()
+            if act_list:
+                act = act_list[0][0]
+                for p in range(seq_len):
+                    tok_text = tokens[p]["token_text"] if p < len(tokens) else f"pos_{p}"
+                    norm_val = float(torch.norm(act[p]).item())
+                    scores.append({
+                        "layer_idx": layer_idx,
+                        "position_idx": p,
+                        "token_text": tok_text,
+                        "attribution_score": round(norm_val, 4)
+                    })
+        scores.sort(key=lambda x: x["attribution_score"], reverse=True)
+        return scores
+
+    def patch_head(
+        self,
+        source_prompt: str,
+        target_prompt: str,
+        layer_idx: int,
+        head_idx: int,
+        source_pos: int,
+        target_pos: int,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> Tuple[str, str, float, Optional[Dict[str, float]]]:
+        """
+        Patch specific attention head output slice at (layer_idx, head_idx, target_pos) from source_prompt.
+        """
+        if self.mock:
+            base_out = target_prompt + " Rome."
+            patch_out = target_prompt + f" [Head {head_idx} Patched Response]"
+            logprobs = self._compute_candidate_logprobs(target_prompt, candidate_tokens) if candidate_tokens else None
+            return base_out, patch_out, 12.4, logprobs
+
+        target_baseline, _ = self.run_inference(target_prompt)
+        inputs_src = self.tokenizer(source_prompt, return_tensors="pt").to(self.device)
+        inputs_tgt = self.tokenizer(target_prompt, return_tensors="pt").to(self.device)
+
+        target_layer = self.model.model.layers[layer_idx]
+        attn_module = getattr(target_layer, "self_attn", target_layer)
+
+        src_head_act = []
+        def capture_head_hook(module, args, output):
+            attn_out = output[0] if isinstance(output, tuple) else output
+            hidden_dim = attn_out.shape[-1]
+            num_heads = getattr(module, "num_heads", getattr(module, "num_attention_heads", 8))
+            head_dim = hidden_dim // num_heads
+            s_pos = max(0, min(source_pos, attn_out.shape[1] - 1))
+            h_start = head_idx * head_dim
+            h_end = (head_idx + 1) * head_dim
+            src_head_act.append(attn_out[:, s_pos:s_pos+1, h_start:h_end].detach().clone())
+
+        handle_src = attn_module.register_forward_hook(capture_head_hook)
+        with torch.no_grad():
+            self.model(**inputs_src)
+        handle_src.remove()
+
+        if not src_head_act:
+            return target_baseline, target_baseline, 0.0, None
+
+        src_tensor = src_head_act[0]
+        delta_norms = []
+        t_pos = max(0, min(target_pos, inputs_tgt["input_ids"].shape[1] - 1))
+
+        def patch_head_hook(module, args, output):
+            attn_out = output[0] if isinstance(output, tuple) else output
+            attn_out_clone = attn_out.clone()
+            hidden_dim = attn_out_clone.shape[-1]
+            num_heads = getattr(module, "num_heads", getattr(module, "num_attention_heads", 8))
+            head_dim = hidden_dim // num_heads
+            h_start = head_idx * head_dim
+            h_end = (head_idx + 1) * head_dim
+            orig = attn_out_clone[:, t_pos:t_pos+1, h_start:h_end].clone()
+            src = src_tensor.to(attn_out_clone.device, dtype=attn_out_clone.dtype)
+            attn_out_clone[:, t_pos:t_pos+1, h_start:h_end] = src
+            delta_norms.append(torch.norm(src - orig).item())
+            if isinstance(output, tuple):
+                return (attn_out_clone,) + output[1:]
+            return attn_out_clone
+
+        handle_tgt = attn_module.register_forward_hook(patch_head_hook)
+        with torch.no_grad():
+            gen_ids = self.model.generate(**inputs_tgt, max_new_tokens=10, do_sample=False)
+            logprobs = None
+            if candidate_tokens:
+                outputs = self.model(**inputs_tgt)
+                logits = outputs.logits[0, -1, :]
+                l_probs = F.log_softmax(logits, dim=-1)
+                logprobs = {}
+                for cand in candidate_tokens:
+                    c_ids = self.tokenizer.encode(cand, add_special_tokens=False)
+                    if c_ids:
+                        logprobs[cand] = float(l_probs[c_ids[0]].item())
+        handle_tgt.remove()
+
+        patched_out = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
+        delta_norm = delta_norms[0] if delta_norms else 0.0
+        return target_baseline, patched_out, delta_norm, logprobs
+
+    def ablate_head(
+        self,
+        prompt: str,
+        layer_idx: int,
+        head_idx: int,
+        position_idx: int,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> Tuple[str, str, float, Optional[Dict[str, float]]]:
+        """
+        Zero-ablate specific attention head output slice at (layer_idx, head_idx, position_idx).
+        """
+        if self.mock:
+            base_out = prompt + " Rome."
+            ablated_out = prompt + f" [Head {head_idx} Ablated Response]"
+            logprobs = self._compute_candidate_logprobs(prompt, candidate_tokens) if candidate_tokens else None
+            return base_out, ablated_out, 15.6, logprobs
+
+        target_baseline, _ = self.run_inference(prompt)
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        target_layer = self.model.model.layers[layer_idx]
+        attn_module = getattr(target_layer, "self_attn", target_layer)
+        delta_norms = []
+        pos = max(0, min(position_idx, inputs["input_ids"].shape[1] - 1))
+
+        def ablate_head_hook(module, args, output):
+            attn_out = output[0] if isinstance(output, tuple) else output
+            attn_out_clone = attn_out.clone()
+            hidden_dim = attn_out_clone.shape[-1]
+            num_heads = getattr(module, "num_heads", getattr(module, "num_attention_heads", 8))
+            head_dim = hidden_dim // num_heads
+            h_start = head_idx * head_dim
+            h_end = (head_idx + 1) * head_dim
+            orig = attn_out_clone[:, pos:pos+1, h_start:h_end].clone()
+            attn_out_clone[:, pos:pos+1, h_start:h_end] = 0.0
+            delta_norms.append(torch.norm(orig).item())
+            if isinstance(output, tuple):
+                return (attn_out_clone,) + output[1:]
+            return attn_out_clone
+
+        handle = attn_module.register_forward_hook(ablate_head_hook)
+        with torch.no_grad():
+            gen_ids = self.model.generate(**inputs, max_new_tokens=10, do_sample=False)
+            logprobs = None
+            if candidate_tokens:
+                outputs = self.model(**inputs)
+                logits = outputs.logits[0, -1, :]
+                l_probs = F.log_softmax(logits, dim=-1)
+                logprobs = {}
+                for cand in candidate_tokens:
+                    c_ids = self.tokenizer.encode(cand, add_special_tokens=False)
+                    if c_ids:
+                        logprobs[cand] = float(l_probs[c_ids[0]].item())
+        handle.remove()
+
+        ablated_out = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
+        delta_norm = delta_norms[0] if delta_norms else 0.0
+        return target_baseline, ablated_out, delta_norm, logprobs
+
+    def patch_mlp(
+        self,
+        source_prompt: str,
+        target_prompt: str,
+        layer_idx: int,
+        source_pos: int,
+        target_pos: int,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> Tuple[str, str, float, Optional[Dict[str, float]]]:
+        """
+        Patch MLP output tensor at (layer_idx, target_pos) from source_prompt.
+        """
+        if self.mock:
+            base_out = target_prompt + " Rome."
+            patch_out = target_prompt + " [MLP Patched Response]"
+            logprobs = self._compute_candidate_logprobs(target_prompt, candidate_tokens) if candidate_tokens else None
+            return base_out, patch_out, 18.2, logprobs
+
+        target_baseline, _ = self.run_inference(target_prompt)
+        inputs_src = self.tokenizer(source_prompt, return_tensors="pt").to(self.device)
+        inputs_tgt = self.tokenizer(target_prompt, return_tensors="pt").to(self.device)
+
+        target_layer = self.model.model.layers[layer_idx]
+        mlp_module = getattr(target_layer, "mlp", target_layer)
+
+        src_mlp_act = []
+        def capture_mlp_hook(module, args, output):
+            mlp_out = output[0] if isinstance(output, tuple) else output
+            s_pos = max(0, min(source_pos, mlp_out.shape[1] - 1))
+            src_mlp_act.append(mlp_out[:, s_pos:s_pos+1, :].detach().clone())
+
+        handle_src = mlp_module.register_forward_hook(capture_mlp_hook)
+        with torch.no_grad():
+            self.model(**inputs_src)
+        handle_src.remove()
+
+        if not src_mlp_act:
+            return target_baseline, target_baseline, 0.0, None
+
+        src_tensor = src_mlp_act[0]
+        delta_norms = []
+        t_pos = max(0, min(target_pos, inputs_tgt["input_ids"].shape[1] - 1))
+
+        def patch_mlp_hook(module, args, output):
+            mlp_out = output[0] if isinstance(output, tuple) else output
+            mlp_out_clone = mlp_out.clone()
+            orig = mlp_out_clone[:, t_pos:t_pos+1, :].clone()
+            src = src_tensor.to(mlp_out_clone.device, dtype=mlp_out_clone.dtype)
+            mlp_out_clone[:, t_pos:t_pos+1, :] = src
+            delta_norms.append(torch.norm(src - orig).item())
+            if isinstance(output, tuple):
+                return (mlp_out_clone,) + output[1:]
+            return mlp_out_clone
+
+        handle_tgt = mlp_module.register_forward_hook(patch_mlp_hook)
+        with torch.no_grad():
+            gen_ids = self.model.generate(**inputs_tgt, max_new_tokens=10, do_sample=False)
+            logprobs = None
+            if candidate_tokens:
+                outputs = self.model(**inputs_tgt)
+                logits = outputs.logits[0, -1, :]
+                l_probs = F.log_softmax(logits, dim=-1)
+                logprobs = {}
+                for cand in candidate_tokens:
+                    c_ids = self.tokenizer.encode(cand, add_special_tokens=False)
+                    if c_ids:
+                        logprobs[cand] = float(l_probs[c_ids[0]].item())
+        handle_tgt.remove()
+
+        patched_out = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
+        delta_norm = delta_norms[0] if delta_norms else 0.0
+        return target_baseline, patched_out, delta_norm, logprobs
+
+    def ablate_mlp(
+        self,
+        prompt: str,
+        layer_idx: int,
+        position_idx: int,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> Tuple[str, str, float, Optional[Dict[str, float]]]:
+        """
+        Zero-ablate MLP output tensor at (layer_idx, position_idx).
+        """
+        if self.mock:
+            base_out = prompt + " Rome."
+            ablated_out = prompt + " [MLP Ablated Response]"
+            logprobs = self._compute_candidate_logprobs(prompt, candidate_tokens) if candidate_tokens else None
+            return base_out, ablated_out, 22.4, logprobs
+
+        target_baseline, _ = self.run_inference(prompt)
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        target_layer = self.model.model.layers[layer_idx]
+        mlp_module = getattr(target_layer, "mlp", target_layer)
+        delta_norms = []
+        pos = max(0, min(position_idx, inputs["input_ids"].shape[1] - 1))
+
+        def ablate_mlp_hook(module, args, output):
+            mlp_out = output[0] if isinstance(output, tuple) else output
+            mlp_out_clone = mlp_out.clone()
+            orig = mlp_out_clone[:, pos:pos+1, :].clone()
+            mlp_out_clone[:, pos:pos+1, :] = 0.0
+            delta_norms.append(torch.norm(orig).item())
+            if isinstance(output, tuple):
+                return (mlp_out_clone,) + output[1:]
+            return mlp_out_clone
+
+        handle = mlp_module.register_forward_hook(ablate_mlp_hook)
+        with torch.no_grad():
+            gen_ids = self.model.generate(**inputs, max_new_tokens=10, do_sample=False)
+            logprobs = None
+            if candidate_tokens:
+                outputs = self.model(**inputs)
+                logits = outputs.logits[0, -1, :]
+                l_probs = F.log_softmax(logits, dim=-1)
+                logprobs = {}
+                for cand in candidate_tokens:
+                    c_ids = self.tokenizer.encode(cand, add_special_tokens=False)
+                    if c_ids:
+                        logprobs[cand] = float(l_probs[c_ids[0]].item())
+        handle.remove()
+
+        ablated_out = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
+        delta_norm = delta_norms[0] if delta_norms else 0.0
+        return baseline_out, ablated_out, delta_norm, logprobs
+
 

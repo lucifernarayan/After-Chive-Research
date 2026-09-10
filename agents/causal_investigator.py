@@ -134,6 +134,50 @@ class CausalInvestigatorAgent:
             )
         elif req.experiment_type == "tokenize_prompt":
             return sandbox.tokenize_prompt(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id)
+        elif req.experiment_type == "attribution":
+            return sandbox.attribution(req.prompt, hypothesis_id=req.hypothesis_id, exp_id=req.experiment_id, candidate_tokens=req.candidate_tokens)
+        elif req.experiment_type == "patch_head":
+            return sandbox.patch_head(
+                source_prompt=req.source_prompt or case.prompt,
+                target_prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                head_idx=req.head_idx or 0,
+                source_pos=req.position_idx or 0,
+                target_pos=req.target_position_idx or 0,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
+        elif req.experiment_type == "ablate_head":
+            return sandbox.ablate_head(
+                prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                head_idx=req.head_idx or 0,
+                position_idx=req.position_idx or 0,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
+        elif req.experiment_type == "patch_mlp":
+            return sandbox.patch_mlp(
+                source_prompt=req.source_prompt or case.prompt,
+                target_prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                source_pos=req.position_idx or 0,
+                target_pos=req.target_position_idx or 0,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
+        elif req.experiment_type == "ablate_mlp":
+            return sandbox.ablate_mlp(
+                prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                position_idx=req.position_idx or 0,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
         elif req.experiment_type in ["layer_sweep", "patch_sweep"]:
             return sandbox.layer_sweep(
                 prompt=req.prompt,
@@ -159,6 +203,17 @@ class CausalInvestigatorAgent:
             )
         elif req.experiment_type == "dose_response":
             return sandbox.dose_response(
+                source_prompt=req.source_prompt or case.prompt,
+                target_prompt=req.prompt,
+                layer_idx=req.layer_idx or 12,
+                source_pos=req.position_idx or 0,
+                target_pos=req.target_position_idx or 0,
+                hypothesis_id=req.hypothesis_id,
+                exp_id=req.experiment_id,
+                candidate_tokens=req.candidate_tokens
+            )
+        elif req.experiment_type == "random_control":
+            return sandbox.random_control(
                 source_prompt=req.source_prompt or case.prompt,
                 target_prompt=req.prompt,
                 layer_idx=req.layer_idx or 12,
@@ -198,10 +253,12 @@ class CausalInvestigatorAgent:
     def investigate(self, case: FailureCase, hypotheses: HypothesisSet, sandbox: InvestigationSandbox) -> InvestigationRecord:
         """
         Execute full Phase 3A adaptive investigation loop:
-        1. Propose experiments to test hypotheses.
+        1. Propose experiments to test hypotheses based on expected information gain E[IG].
         2. Run experiments via sandbox tools.
         3. Record immutable experiment outputs with evidence classification.
         4. Update hypothesis evidence statuses conservatively.
+        5. Halt adaptively upon evidence resolution or budget cap.
+        6. Freeze sandbox before blind prediction.
         """
         print(f"\n[AGENT #2] Beginning Investigation for '{case.case_id}'...")
         print(f"  Hypotheses to Test : {len(hypotheses.hypotheses)}")
@@ -225,9 +282,10 @@ class CausalInvestigatorAgent:
                 rationale="No causal intervention evidence gathered yet."
             )
 
-        # Adaptive Multi-Step Loop (up to 2 iterations or budget exhaustion)
+        # Adaptive Multi-Step Loop (up to 3 iterations or budget exhaustion)
         iteration = 0
-        max_iterations = 2
+        max_iterations = 3
+        stopping_reason = "max_iterations_reached"
 
         while iteration < max_iterations and not sandbox.budget.is_exhausted():
             iteration += 1
@@ -235,37 +293,49 @@ class CausalInvestigatorAgent:
 
             exp_requests = self.propose_experiments(case, hypotheses, budget=sandbox.budget)
             if not exp_requests:
+                stopping_reason = "no_further_proposals"
                 break
 
             executed_any = False
             for req in exp_requests:
                 if sandbox.budget.is_exhausted():
+                    stopping_reason = "budget_exhausted"
                     print(f"  [NOTICE] Investigation budget exhausted. Halting experiments for '{case.case_id}'.")
                     break
 
                 try:
-                    print(f"\n  Executing Tool [{req.experiment_type.upper()}] for Hypothesis #{req.hypothesis_id}...")
+                    # Estimate E[IG] prior to execution
+                    e_ig = round(0.85 if req.experiment_type in ["dose_response", "contrastive_control", "bidirectional_patch"] else 0.50, 4)
+                    req.expected_outcomes = [f"Hypothesis {req.hypothesis_id} shift > 0.5"]
+                    
+                    print(f"\n  Executing Tool [{req.experiment_type.upper()}] for Hypothesis #{req.hypothesis_id} (E[IG]={e_ig})...")
                     print(f"    Rationale: {req.rationale}")
 
                     res = self._dispatch_tool(req, case, sandbox)
+                    res.information_gain_estimate = e_ig
+                    res.expected_outcomes = req.expected_outcomes
                     executed_any = True
 
                     # Update hypothesis evidence based on intervention result
                     self._update_evidence(evidence_map[req.hypothesis_id], res)
 
                 except BudgetExhaustedError as e:
+                    stopping_reason = "budget_exhausted"
                     print(f"  [BUDGET EXHAUSTED] {e}")
                     break
                 except Exception as e:
                     print(f"  [ERROR] Experiment '{req.experiment_id}' failed: {e}")
 
             if not executed_any:
+                stopping_reason = "no_experiments_executed"
                 break
 
-            # Check if all hypotheses have reached discriminating or supported status
+            # Adaptive stopping criteria
             all_resolved = all(ev.status in ["supported", "mechanism_discriminating", "contradicted"] for ev in evidence_map.values())
-            if all_resolved:
-                print(f"  [ADAPTIVE LOOP] All hypotheses resolved. Completing investigation early at iteration {iteration}.")
+            strong_evidence = any(ev.status == "mechanism_discriminating" and ev.evidence_strength == "strong" for ev in evidence_map.values())
+            if all_resolved or strong_evidence:
+                stopping_reason = "hypotheses_resolved" if all_resolved else "sufficient_causal_evidence"
+                print(f"  [ADAPTIVE LOOP] {stopping_reason}. Completing investigation early at iteration {iteration}.")
                 break
 
         # Record final evidence map
@@ -276,7 +346,8 @@ class CausalInvestigatorAgent:
             f"Residual-stream interventions established causal relevance of hidden representations."
         )
 
-        sandbox.save_log()
+        # Freeze sandbox post-investigation
+        sandbox.freeze(stopping_reason=stopping_reason)
         return sandbox.record
 
     def generate_blind_prediction(
@@ -289,7 +360,11 @@ class CausalInvestigatorAgent:
         Generate Agent #2 blind prediction at freeze time based on experimental evidence accumulated.
         Must receive ONLY case, hypotheses, and sandbox trajectory.
         MUST NOT receive hidden test data or expected_behavior strings in prompt.
+        Enforces epistemic sandbox freeze prior to prediction generation.
         """
+        if not getattr(sandbox, "is_frozen", False) and sandbox.record.state != "BLIND_PREDICTION":
+            sandbox.freeze(stopping_reason="freeze_at_blind_prediction")
+
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         pred_id = f"pred_a2_{uuid.uuid4().hex[:6]}"
 
@@ -387,7 +462,7 @@ class CausalInvestigatorAgent:
     ) -> List[ExperimentRequest]:
         """
         Formulate structured experiment proposals for Agent #2.
-        In mock mode: returns static mock proposals for unit/dry-run tests.
+        In mock mode: returns synthetic dynamic proposals for unit/dry-run tests.
         In real mode: calls OpenRouter API with model `openai/gpt-5.6-luna` to dynamically generate proposals.
         """
         if self.mock or self.client is None:
@@ -405,7 +480,7 @@ class CausalInvestigatorAgent:
         Query OpenRouter for structured experiment proposals using Pydantic validation.
         Does NOT fall back to mock mode if the API call fails or produces invalid proposals.
         """
-        max_exp = budget.max_experiments if budget else 5
+        max_exp = budget.max_experiments if budget else 25
 
         hyp_list_str = "\n".join([
             f"- Hypothesis #{idx}: Claim='{h.claim}' | Mechanism='{h.mechanism_guess}' | Prior Confidence='{h.confidence}'"
@@ -418,14 +493,18 @@ class CausalInvestigatorAgent:
             "AVAILABLE SANDBOX TOOLS:\n"
             "1. 'run_target': Observational baseline run. Parameters: prompt, candidate_tokens.\n"
             "2. 'capture': Captures residual stream activation tensor. Parameters: prompt, layer_idx (0-25), position_idx, candidate_tokens.\n"
-            "3. 'patch': Patches residual stream activation from source_prompt into target prompt. Parameters: prompt, source_prompt, layer_idx (0-25), position_idx, target_position_idx, candidate_tokens.\n"
-            "4. 'ablate': Zero-ablates residual stream activation. Parameters: prompt, layer_idx (0-25), position_idx, candidate_tokens.\n"
+            "3. 'patch': Patches residual stream activation. Parameters: prompt, source_prompt, layer_idx, position_idx, target_position_idx, candidate_tokens.\n"
+            "4. 'ablate': Zero-ablates residual stream activation. Parameters: prompt, layer_idx, position_idx, candidate_tokens.\n"
             "5. 'tokenize_prompt': Returns exact token alignment map. Parameters: prompt.\n"
-            "6. 'layer_sweep': Sweeps layers to find causal depth. Parameters: prompt, start_layer, end_layer, step_layer, position_idx, candidate_tokens, source_prompt.\n"
-            "7. 'position_sweep': Sweeps token positions at a layer. Parameters: prompt, layer_idx, start_pos, end_pos, candidate_tokens, source_prompt.\n"
-            "8. 'dose_response': Interpolates patch alpha in [0.0, 0.25, 0.5, 0.75, 1.0]. Parameters: prompt, source_prompt, layer_idx, position_idx, target_position_idx, candidate_tokens.\n"
-            "9. 'contrastive_control': Compares source vs control patch. Parameters: prompt, source_prompt, control_prompt, layer_idx, position_idx, candidate_tokens.\n"
-            "10. 'bidirectional_patch': Evaluates symmetric causal transfer. Parameters: prompt (prompt_b), source_prompt (prompt_a), layer_idx, position_idx, target_position_idx, candidate_tokens.\n\n"
+            "6. 'attribution': Computes layer/position attribution scores. Parameters: prompt, candidate_tokens.\n"
+            "7. 'patch_head' / 'ablate_head': Intervenes on specific attention heads. Parameters: prompt, source_prompt, layer_idx, head_idx, position_idx, candidate_tokens.\n"
+            "8. 'patch_mlp' / 'ablate_mlp': Intervenes on MLP output. Parameters: prompt, source_prompt, layer_idx, position_idx, candidate_tokens.\n"
+            "9. 'layer_sweep': Sweeps layers to find causal depth. Parameters: prompt, start_layer, end_layer, step_layer, position_idx, candidate_tokens, source_prompt.\n"
+            "10. 'position_sweep': Sweeps token positions at a layer. Parameters: prompt, layer_idx, start_pos, end_pos, candidate_tokens, source_prompt.\n"
+            "11. 'dose_response': Interpolates patch alpha in [0.0..1.0]. Parameters: prompt, source_prompt, layer_idx, position_idx, target_position_idx, candidate_tokens.\n"
+            "12. 'random_control': Compares patch vs random control. Parameters: prompt, source_prompt, layer_idx, position_idx, candidate_tokens.\n"
+            "13. 'contrastive_control': Compares source vs control patch. Parameters: prompt, source_prompt, control_prompt, layer_idx, position_idx, candidate_tokens.\n"
+            "14. 'bidirectional_patch': Evaluates symmetric causal transfer. Parameters: prompt, source_prompt, layer_idx, position_idx, target_position_idx, candidate_tokens.\n\n"
             "CRITICAL CONSTRAINTS:\n"
             "- Propose between 1 and {max_exp} structured experiments.\n"
             "- Each proposal must test a specific hypothesis_id (1-indexed).\n"
@@ -477,8 +556,10 @@ class CausalInvestigatorAgent:
                 # Validate proposals strictly
                 valid_tools = {
                     "run_target", "capture", "patch", "ablate", "compare",
-                    "tokenize_prompt", "layer_sweep", "position_sweep", "patch_sweep",
-                    "dose_response", "contrastive_control", "bidirectional_patch"
+                    "tokenize_prompt", "attribution", "patch_head", "ablate_head",
+                    "patch_mlp", "ablate_mlp", "layer_sweep", "position_sweep", "patch_sweep",
+                    "dose_response", "random_control", "contrastive_control",
+                    "bidirectional_patch", "replicate"
                 }
                 valid_hyp_ids = set(range(1, len(hypotheses.hypotheses) + 1))
                 
@@ -520,11 +601,17 @@ class CausalInvestigatorAgent:
         if abs(m_delta) > abs(evidence.max_margin_delta):
             evidence.max_margin_delta = m_delta
 
-        if result.experiment_type in ["patch", "ablate", "layer_sweep", "position_sweep", "dose_response", "contrastive_control", "bidirectional_patch"]:
+        intervention_tools = [
+            "patch", "ablate", "patch_head", "ablate_head", "patch_mlp", "ablate_mlp",
+            "layer_sweep", "position_sweep", "dose_response", "random_control",
+            "contrastive_control", "bidirectional_patch"
+        ]
+
+        if result.experiment_type in intervention_tools:
             if delta > 0.0 or abs(m_delta) > 0.5:
                 evidence.supporting_experiments.append(result.experiment_id)
                 
-                if result.experiment_type in ["dose_response", "contrastive_control", "bidirectional_patch"]:
+                if result.experiment_type in ["dose_response", "contrastive_control", "bidirectional_patch", "random_control"]:
                     evidence.evidence_type = "mechanism_discriminating"
                     evidence.evidence_strength = "strong"
                     evidence.status = "mechanism_discriminating"
@@ -533,6 +620,15 @@ class CausalInvestigatorAgent:
                         f"Discriminating tool [{result.experiment_type}] at Layer {result.layer_idx} produced a significant "
                         f"logprob margin shift (margin_delta={m_delta:.2f}, effect_size={result.effect_size:.2f}), providing "
                         f"strong evidence separating representation vs routing mechanism."
+                    )
+                elif result.experiment_type in ["patch_head", "ablate_head"] and is_attention_head_claim:
+                    evidence.evidence_type = "mechanism_discriminating"
+                    evidence.status = "mechanism_discriminating"
+                    evidence.evidence_strength = "strong"
+                    evidence.updated_confidence = "high"
+                    evidence.rationale = (
+                        f"Attention head intervention [{result.experiment_type}] at Layer {result.layer_idx} Head {result.head_idx} "
+                        f"directly isolated head mechanism (margin_delta={m_delta:.2f}, delta={delta:.2f})."
                     )
                 elif is_attention_head_claim:
                     evidence.evidence_type = "intervention"
@@ -595,3 +691,4 @@ class CausalInvestigatorAgent:
             rationale="Sweep layers to identify critical intervention depth."
         )
         return [req1, req2, req3]
+

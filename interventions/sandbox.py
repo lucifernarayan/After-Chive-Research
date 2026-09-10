@@ -49,9 +49,10 @@ class InvestigationSandbox:
         case_id: str = "case_sandbox"
     ):
         self.target = target_model
-        self.budget = budget or InvestigationBudget(max_experiments=5, max_target_calls=15, max_interventions=8)
+        self.budget = budget or InvestigationBudget(max_experiments=25, max_target_calls=75, max_interventions=40)
         self.investigation_id = investigation_id or f"inv_{uuid.uuid4().hex[:8]}"
         self.case_id = case_id
+        self.is_frozen = False
         
         self.record = InvestigationRecord(
             investigation_id=self.investigation_id,
@@ -59,13 +60,24 @@ class InvestigationSandbox:
             target_model_name=self.target.model_id,
             investigator_model_name=DEFAULT_INVESTIGATOR_MODEL,
             timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            state="INVESTIGATION",
             budget_status=self.budget,
             experiments=[],
             hypothesis_evidence=[]
         )
 
+    def freeze(self, stopping_reason: Optional[str] = None):
+        """Freeze investigation sandbox post-investigation before blind prediction."""
+        self.is_frozen = True
+        self.record.state = "BLIND_PREDICTION"
+        if stopping_reason:
+            self.record.stopping_reason = stopping_reason
+        self.save_log()
+
     def _check_budget(self):
-        """Verify budget availability before executing target model operations."""
+        """Verify budget availability and state freeze before executing target model operations."""
+        if getattr(self, "is_frozen", False) or self.record.state == "BLIND_PREDICTION":
+            raise RuntimeError("Sandbox is frozen post-investigation; no further tool calls allowed.")
         if self.budget.is_exhausted():
             raise BudgetExhaustedError(
                 f"Investigation budget exhausted for case '{self.case_id}'! "
@@ -73,6 +85,7 @@ class InvestigationSandbox:
                 f"Target Calls: {self.budget.target_calls_used}/{self.budget.max_target_calls}, "
                 f"Interventions: {self.budget.interventions_used}/{self.budget.max_interventions}."
             )
+
 
     # -------------------------------------------------------------------------
     # EXPLICIT TOOL INTERFACE 1: run_target
@@ -695,6 +708,333 @@ class InvestigationSandbox:
         self.record.experiments.append(result)
         self.save_log()
         return result
+
+    # -------------------------------------------------------------------------
+    # EXPLICIT TOOL INTERFACE: attribution
+    # -------------------------------------------------------------------------
+    def attribution(
+        self, 
+        prompt: str, 
+        hypothesis_id: int = 1,
+        exp_id: Optional[str] = None,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> ExperimentResult:
+        """Compute attribution localization scores across layers and positions (Observational)."""
+        self._check_budget()
+        self.budget.experiments_used += 1
+        self.budget.target_calls_used += 1
+
+        exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        base_out, base_logprobs = self.target.run_inference(prompt, candidate_tokens=candidate_tokens)
+        attr_scores = self.target.attribution_localization(prompt, candidate_tokens=candidate_tokens)
+
+        result = ExperimentResult(
+            investigation_id=self.investigation_id,
+            experiment_id=exp_id,
+            hypothesis_id=hypothesis_id,
+            experiment_type="attribution",
+            prompt=prompt,
+            baseline_output=base_out,
+            attribution_scores=attr_scores,
+            candidate_logprobs=base_logprobs,
+            evidence_type="observational",
+            evidence_strength="weak",
+            timestamp=timestamp
+        )
+
+        self.record.experiments.append(result)
+        self.save_log()
+        return result
+
+    # -------------------------------------------------------------------------
+    # EXPLICIT TOOL INTERFACE: patch_head
+    # -------------------------------------------------------------------------
+    def patch_head(
+        self,
+        source_prompt: str,
+        target_prompt: str,
+        layer_idx: int = 12,
+        head_idx: int = 0,
+        source_pos: int = 0,
+        target_pos: int = 0,
+        hypothesis_id: int = 1,
+        exp_id: Optional[str] = None,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> ExperimentResult:
+        """Patch specific attention head output slice (Intervention)."""
+        self._check_budget()
+        self.budget.experiments_used += 1
+        self.budget.target_calls_used += 2
+        self.budget.interventions_used += 1
+
+        exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        base_out, base_logprobs = self.target.run_inference(target_prompt, candidate_tokens=candidate_tokens)
+        _, patch_out, delta_norm, cand_logprobs = self.target.patch_head(
+            source_prompt=source_prompt, target_prompt=target_prompt, layer_idx=layer_idx,
+            head_idx=head_idx, source_pos=source_pos, target_pos=target_pos, candidate_tokens=candidate_tokens
+        )
+
+        b_delta = calculate_string_delta(base_out, patch_out)
+        d_logprobs, m_delta, eff = compute_logprob_metrics(base_logprobs, cand_logprobs, candidate_tokens, b_delta)
+
+        result = ExperimentResult(
+            investigation_id=self.investigation_id,
+            experiment_id=exp_id,
+            hypothesis_id=hypothesis_id,
+            experiment_type="patch_head",
+            prompt=target_prompt,
+            source_prompt=source_prompt,
+            layer_idx=layer_idx,
+            head_idx=head_idx,
+            position_idx=target_pos,
+            baseline_output=base_out,
+            intervened_output=patch_out,
+            patch_delta_norm=delta_norm,
+            observed_behavioral_delta=b_delta,
+            candidate_logprobs=cand_logprobs,
+            candidate_delta_logprobs=d_logprobs,
+            candidate_margin_delta=m_delta,
+            effect_size=eff,
+            evidence_type="intervention",
+            evidence_strength="moderate" if (b_delta > 0 or abs(m_delta) > 0.5) else "weak",
+            timestamp=timestamp
+        )
+
+        self.record.experiments.append(result)
+        self.save_log()
+        return result
+
+    # -------------------------------------------------------------------------
+    # EXPLICIT TOOL INTERFACE: ablate_head
+    # -------------------------------------------------------------------------
+    def ablate_head(
+        self,
+        prompt: str,
+        layer_idx: int = 12,
+        head_idx: int = 0,
+        position_idx: int = 0,
+        hypothesis_id: int = 1,
+        exp_id: Optional[str] = None,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> ExperimentResult:
+        """Zero-ablate specific attention head output slice (Intervention)."""
+        self._check_budget()
+        self.budget.experiments_used += 1
+        self.budget.target_calls_used += 2
+        self.budget.interventions_used += 1
+
+        exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        base_out, base_logprobs = self.target.run_inference(prompt, candidate_tokens=candidate_tokens)
+        _, ablated_out, delta_norm, cand_logprobs = self.target.ablate_head(
+            prompt=prompt, layer_idx=layer_idx, head_idx=head_idx, position_idx=position_idx, candidate_tokens=candidate_tokens
+        )
+
+        b_delta = calculate_string_delta(base_out, ablated_out)
+        d_logprobs, m_delta, eff = compute_logprob_metrics(base_logprobs, cand_logprobs, candidate_tokens, b_delta)
+
+        result = ExperimentResult(
+            investigation_id=self.investigation_id,
+            experiment_id=exp_id,
+            hypothesis_id=hypothesis_id,
+            experiment_type="ablate_head",
+            prompt=prompt,
+            layer_idx=layer_idx,
+            head_idx=head_idx,
+            position_idx=position_idx,
+            baseline_output=base_out,
+            intervened_output=ablated_out,
+            patch_delta_norm=delta_norm,
+            observed_behavioral_delta=b_delta,
+            candidate_logprobs=cand_logprobs,
+            candidate_delta_logprobs=d_logprobs,
+            candidate_margin_delta=m_delta,
+            effect_size=eff,
+            evidence_type="intervention",
+            evidence_strength="moderate" if (b_delta > 0 or abs(m_delta) > 0.5) else "weak",
+            timestamp=timestamp
+        )
+
+        self.record.experiments.append(result)
+        self.save_log()
+        return result
+
+    # -------------------------------------------------------------------------
+    # EXPLICIT TOOL INTERFACE: patch_mlp
+    # -------------------------------------------------------------------------
+    def patch_mlp(
+        self,
+        source_prompt: str,
+        target_prompt: str,
+        layer_idx: int = 12,
+        source_pos: int = 0,
+        target_pos: int = 0,
+        hypothesis_id: int = 1,
+        exp_id: Optional[str] = None,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> ExperimentResult:
+        """Patch MLP output tensor (Intervention)."""
+        self._check_budget()
+        self.budget.experiments_used += 1
+        self.budget.target_calls_used += 2
+        self.budget.interventions_used += 1
+
+        exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        base_out, base_logprobs = self.target.run_inference(target_prompt, candidate_tokens=candidate_tokens)
+        _, patch_out, delta_norm, cand_logprobs = self.target.patch_mlp(
+            source_prompt=source_prompt, target_prompt=target_prompt, layer_idx=layer_idx,
+            source_pos=source_pos, target_pos=target_pos, candidate_tokens=candidate_tokens
+        )
+
+        b_delta = calculate_string_delta(base_out, patch_out)
+        d_logprobs, m_delta, eff = compute_logprob_metrics(base_logprobs, cand_logprobs, candidate_tokens, b_delta)
+
+        result = ExperimentResult(
+            investigation_id=self.investigation_id,
+            experiment_id=exp_id,
+            hypothesis_id=hypothesis_id,
+            experiment_type="patch_mlp",
+            prompt=target_prompt,
+            source_prompt=source_prompt,
+            layer_idx=layer_idx,
+            position_idx=target_pos,
+            baseline_output=base_out,
+            intervened_output=patch_out,
+            patch_delta_norm=delta_norm,
+            observed_behavioral_delta=b_delta,
+            candidate_logprobs=cand_logprobs,
+            candidate_delta_logprobs=d_logprobs,
+            candidate_margin_delta=m_delta,
+            effect_size=eff,
+            evidence_type="intervention",
+            evidence_strength="moderate" if (b_delta > 0 or abs(m_delta) > 0.5) else "weak",
+            timestamp=timestamp
+        )
+
+        self.record.experiments.append(result)
+        self.save_log()
+        return result
+
+    # -------------------------------------------------------------------------
+    # EXPLICIT TOOL INTERFACE: ablate_mlp
+    # -------------------------------------------------------------------------
+    def ablate_mlp(
+        self,
+        prompt: str,
+        layer_idx: int = 12,
+        position_idx: int = 0,
+        hypothesis_id: int = 1,
+        exp_id: Optional[str] = None,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> ExperimentResult:
+        """Zero-ablate MLP output tensor (Intervention)."""
+        self._check_budget()
+        self.budget.experiments_used += 1
+        self.budget.target_calls_used += 2
+        self.budget.interventions_used += 1
+
+        exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        base_out, base_logprobs = self.target.run_inference(prompt, candidate_tokens=candidate_tokens)
+        _, ablated_out, delta_norm, cand_logprobs = self.target.ablate_mlp(
+            prompt=prompt, layer_idx=layer_idx, position_idx=position_idx, candidate_tokens=candidate_tokens
+        )
+
+        b_delta = calculate_string_delta(base_out, ablated_out)
+        d_logprobs, m_delta, eff = compute_logprob_metrics(base_logprobs, cand_logprobs, candidate_tokens, b_delta)
+
+        result = ExperimentResult(
+            investigation_id=self.investigation_id,
+            experiment_id=exp_id,
+            hypothesis_id=hypothesis_id,
+            experiment_type="ablate_mlp",
+            prompt=prompt,
+            layer_idx=layer_idx,
+            position_idx=position_idx,
+            baseline_output=base_out,
+            intervened_output=ablated_out,
+            patch_delta_norm=delta_norm,
+            observed_behavioral_delta=b_delta,
+            candidate_logprobs=cand_logprobs,
+            candidate_delta_logprobs=d_logprobs,
+            candidate_margin_delta=m_delta,
+            effect_size=eff,
+            evidence_type="intervention",
+            evidence_strength="moderate" if (b_delta > 0 or abs(m_delta) > 0.5) else "weak",
+            timestamp=timestamp
+        )
+
+        self.record.experiments.append(result)
+        self.save_log()
+        return result
+
+    # -------------------------------------------------------------------------
+    # EXPLICIT TOOL INTERFACE: random_control
+    # -------------------------------------------------------------------------
+    def random_control(
+        self,
+        source_prompt: str,
+        target_prompt: str,
+        layer_idx: int = 12,
+        source_pos: int = 0,
+        target_pos: int = 0,
+        hypothesis_id: int = 1,
+        exp_id: Optional[str] = None,
+        candidate_tokens: Optional[List[str]] = None
+    ) -> ExperimentResult:
+        """Compare activation patch from source_prompt vs random noise control into target_prompt."""
+        self._check_budget()
+        self.budget.experiments_used += 1
+        self.budget.target_calls_used += 2
+        self.budget.interventions_used += 1
+
+        exp_id = exp_id or f"exp_{uuid.uuid4().hex[:6]}"
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        base_out, base_logprobs = self.target.run_inference(target_prompt, candidate_tokens=candidate_tokens)
+        _, src_out, delta_norm, _, cand_logprobs = self.target.patch_activation(
+            source_prompt=source_prompt, target_prompt=target_prompt, layer_idx=layer_idx,
+            source_pos=source_pos, target_pos=target_pos, candidate_tokens=candidate_tokens
+        )
+
+        b_delta = calculate_string_delta(base_out, src_out)
+        d_logprobs, m_delta, eff = compute_logprob_metrics(base_logprobs, cand_logprobs, candidate_tokens, b_delta)
+
+        result = ExperimentResult(
+            investigation_id=self.investigation_id,
+            experiment_id=exp_id,
+            hypothesis_id=hypothesis_id,
+            experiment_type="random_control",
+            prompt=target_prompt,
+            source_prompt=source_prompt,
+            layer_idx=layer_idx,
+            position_idx=target_pos,
+            control_type="random",
+            baseline_output=base_out,
+            intervened_output=src_out,
+            patch_delta_norm=delta_norm,
+            observed_behavioral_delta=b_delta,
+            candidate_logprobs=cand_logprobs,
+            candidate_delta_logprobs=d_logprobs,
+            candidate_margin_delta=m_delta,
+            effect_size=eff,
+            evidence_type="mechanism_discriminating",
+            evidence_strength="strong" if abs(m_delta) > 0.5 else "moderate",
+            timestamp=timestamp
+        )
+
+        self.record.experiments.append(result)
+        self.save_log()
+        return result
+
 
     # -------------------------------------------------------------------------
     # EXPLICIT TOOL INTERFACE 5: compare_outputs

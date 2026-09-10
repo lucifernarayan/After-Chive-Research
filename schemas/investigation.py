@@ -9,9 +9,9 @@ from config import DEFAULT_INVESTIGATOR_MODEL
 
 class InvestigationBudget(BaseModel):
     """Configuration and usage tracker for Agent #2 investigation budget."""
-    max_experiments: int = Field(default=5, description="Maximum total experiments per investigation case")
-    max_target_calls: int = Field(default=15, description="Maximum total target model forward runs")
-    max_interventions: int = Field(default=8, description="Maximum activation interventions (patching/ablation)")
+    max_experiments: int = Field(default=25, description="Maximum total experiments per investigation case")
+    max_target_calls: int = Field(default=75, description="Maximum total target model forward runs")
+    max_interventions: int = Field(default=40, description="Maximum activation interventions (patching/ablation)")
     
     experiments_used: int = Field(default=0, description="Experiments executed so far")
     target_calls_used: int = Field(default=0, description="Target model inference calls executed so far")
@@ -36,17 +36,25 @@ class ExperimentRequest(BaseModel):
         "ablate", 
         "compare",
         "tokenize_prompt",
+        "attribution",
+        "patch_head",
+        "ablate_head",
+        "patch_mlp",
+        "ablate_mlp",
         "layer_sweep",
         "position_sweep",
         "patch_sweep",
         "dose_response",
+        "random_control",
         "contrastive_control",
-        "bidirectional_patch"
+        "bidirectional_patch",
+        "replicate"
     ] = Field(..., description="Explicit tool operation type")
     prompt: str = Field(..., description="Primary prompt given to target model")
     source_prompt: Optional[str] = Field(default=None, description="Source prompt for activation patching")
     control_prompt: Optional[str] = Field(default=None, description="Control prompt for contrastive control experiments")
     layer_idx: Optional[int] = Field(default=None, description="Target transformer layer index (0 to 25)")
+    head_idx: Optional[int] = Field(default=None, description="Target attention head index (0 to 15)")
     position_idx: Optional[int] = Field(default=None, description="Target token position index")
     target_position_idx: Optional[int] = Field(default=None, description="Target prompt position index for patching")
     start_layer: Optional[int] = Field(default=None, description="Start layer index for layer sweep")
@@ -55,6 +63,9 @@ class ExperimentRequest(BaseModel):
     start_pos: Optional[int] = Field(default=None, description="Start token position for position sweep")
     end_pos: Optional[int] = Field(default=None, description="End token position for position sweep")
     alpha: Optional[float] = Field(default=None, description="Interpolation coefficient alpha for dose response (0.0 to 1.0)")
+    control_type: Optional[str] = Field(default=None, description="Control type: 'none', 'random', 'contrastive'")
+    replication_of_experiment_id: Optional[str] = Field(default=None, description="Experiment ID to replicate")
+    expected_outcomes: Optional[List[str]] = Field(default=None, description="Expected outcome hypotheses for information gain calculation")
     candidate_tokens: Optional[List[str]] = Field(default=None, description="Candidate token strings to measure log-probabilities for")
     rationale: str = Field(..., description="Agent #2 reasoning for why this experiment discriminates the hypothesis")
 
@@ -73,7 +84,13 @@ class ExperimentResult(BaseModel):
     prompt: str = Field(..., description="Prompt used")
     source_prompt: Optional[str] = Field(default=None, description="Source prompt if patching")
     layer_idx: Optional[int] = Field(default=None, description="Layer index intervened on")
+    head_idx: Optional[int] = Field(default=None, description="Attention head index intervened on")
     position_idx: Optional[int] = Field(default=None, description="Token position index")
+    control_type: Optional[str] = Field(default=None, description="Control type ('none', 'random', 'contrastive')")
+    replication_of_experiment_id: Optional[str] = Field(default=None, description="ID of replicated experiment")
+    information_gain_estimate: Optional[float] = Field(default=None, description="Expected information gain estimate E[IG]")
+    stopping_reason: Optional[str] = Field(default=None, description="Stopping reason if this experiment halted investigation")
+    expected_outcomes: Optional[List[str]] = Field(default=None, description="Expected outcomes predicted before execution")
     
     baseline_output: str = Field(..., description="Observable model baseline output without intervention")
     intervened_output: Optional[str] = Field(default=None, description="Observable model output after intervention")
@@ -101,6 +118,10 @@ class ExperimentResult(BaseModel):
     token_alignment: Optional[List[Dict[str, Any]]] = Field(
         default=None,
         description="Tokenizer mapping position index to token text"
+    )
+    attribution_scores: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Attribution / localization gradient-activation scores per layer/position"
     )
     sweep_results: Optional[List[Dict[str, Any]]] = Field(
         default=None,
@@ -162,7 +183,10 @@ class InvestigationRecord(BaseModel):
     target_model_name: str = "google/gemma-2-2b-it"
     investigator_model_name: str = DEFAULT_INVESTIGATOR_MODEL
     timestamp: str
+    state: Literal["INVESTIGATION", "BLIND_PREDICTION"] = Field(default="INVESTIGATION", description="Epistemic lifecycle state")
+    stopping_reason: Optional[str] = Field(default=None, description="Reason for stopping investigation loop")
     budget_status: InvestigationBudget
     experiments: List[ExperimentResult] = Field(default_factory=list)
     hypothesis_evidence: List[HypothesisEvidence] = Field(default_factory=list)
     final_mechanistic_summary: Optional[str] = Field(default=None, description="Agent #2 final synthesis of causal intervention evidence")
+

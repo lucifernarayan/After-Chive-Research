@@ -1,9 +1,11 @@
 {
-  "investigation_id": "inv_05d3a04b",
+  "investigation_id": "inv_589b0729",
   "case_id": "test_001",
   "target_model_name": "google/gemma-2-2b-it",
   "investigator_model_name": "openai/gpt-5.6-luna",
-  "timestamp": "2026-09-06T20:31:25.807657+00:00",
+  "timestamp": "2026-09-10T11:55:16.980188+00:00",
+  "state": "BLIND_PREDICTION",
+  "stopping_reason": "sufficient_causal_evidence",
   "budget_status": {
     "max_experiments": 5,
     "max_target_calls": 15,
@@ -14,14 +16,22 @@
   },
   "experiments": [
     {
-      "investigation_id": "inv_05d3a04b",
+      "investigation_id": "inv_589b0729",
       "experiment_id": "exp_001",
       "hypothesis_id": 1,
       "experiment_type": "tokenize_prompt",
       "prompt": "Prompt 1",
       "source_prompt": null,
       "layer_idx": null,
+      "head_idx": null,
       "position_idx": null,
+      "control_type": null,
+      "replication_of_experiment_id": null,
+      "information_gain_estimate": 0.5,
+      "stopping_reason": null,
+      "expected_outcomes": [
+        "Hypothesis 1 shift > 0.5"
+      ],
       "baseline_output": "Tokenized 2 tokens.",
       "intervened_output": null,
       "activation_shape": null,
@@ -44,23 +54,32 @@
           "token_text": "1"
         }
       ],
+      "attribution_scores": null,
       "sweep_results": null,
       "dose_response_curve": null,
       "evidence_type": "observational",
       "evidence_strength": "weak",
-      "timestamp": "2026-09-06T20:31:25.807788+00:00",
+      "timestamp": "2026-09-10T11:55:16.980435+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "openai/gpt-5.6-luna"
     },
     {
-      "investigation_id": "inv_05d3a04b",
+      "investigation_id": "inv_589b0729",
       "experiment_id": "exp_002",
       "hypothesis_id": 1,
       "experiment_type": "dose_response",
       "prompt": "Prompt 1",
       "source_prompt": "The capital of France is",
       "layer_idx": 12,
+      "head_idx": null,
       "position_idx": 3,
+      "control_type": null,
+      "replication_of_experiment_id": null,
+      "information_gain_estimate": 0.85,
+      "stopping_reason": null,
+      "expected_outcomes": [
+        "Hypothesis 1 shift > 0.5"
+      ],
       "baseline_output": "Prompt 1 [Mock Gemma Response]",
       "intervened_output": "Dose response curve computed across alphas [0.0, 0.25, 0.5, 0.75, 1.0].",
       "activation_shape": null,
@@ -72,12 +91,13 @@
         "Paris": -3.65
       },
       "candidate_delta_logprobs": null,
-      "candidate_margin_delta": -3.65,
-      "effect_size": -0.9125,
+      "candidate_margin_delta": -2.7188,
+      "effect_size": -0.6797,
       "token_alignment": null,
+      "attribution_scores": null,
       "sweep_results": null,
       "dose_response_curve": {
-        "0.00": -3.65,
+        "0.00": 0.0,
         "0.25": -2.7188,
         "0.50": -1.7875,
         "0.75": -0.8563,
@@ -85,19 +105,27 @@
       },
       "evidence_type": "mechanism_discriminating",
       "evidence_strength": "strong",
-      "timestamp": "2026-09-06T20:31:25.808891+00:00",
+      "timestamp": "2026-09-10T11:55:16.983106+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "openai/gpt-5.6-luna"
     },
     {
-      "investigation_id": "inv_05d3a04b",
+      "investigation_id": "inv_589b0729",
       "experiment_id": "exp_003",
       "hypothesis_id": 2,
       "experiment_type": "layer_sweep",
       "prompt": "Prompt 1",
       "source_prompt": null,
       "layer_idx": null,
+      "head_idx": null,
       "position_idx": 0,
+      "control_type": null,
+      "replication_of_experiment_id": null,
+      "information_gain_estimate": 0.5,
+      "stopping_reason": null,
+      "expected_outcomes": [
+        "Hypothesis 2 shift > 0.5"
+      ],
       "baseline_output": "Prompt 1 [Mock Gemma Response]",
       "intervened_output": "Layer sweep completed across layers 0-24.",
       "activation_shape": null,
@@ -112,6 +140,7 @@
       "candidate_margin_delta": 0.0,
       "effect_size": 0.0,
       "token_alignment": null,
+      "attribution_scores": null,
       "sweep_results": [
         {
           "layer_idx": 0,
@@ -153,7 +182,7 @@
       "dose_response_curve": null,
       "evidence_type": "intervention",
       "evidence_strength": "moderate",
-      "timestamp": "2026-09-06T20:31:25.811440+00:00",
+      "timestamp": "2026-09-10T11:55:16.993661+00:00",
       "target_model_name": "google/gemma-2-2b-it",
       "investigator_model_name": "openai/gpt-5.6-luna"
     }
@@ -172,8 +201,8 @@
       "evidence_strength": "strong",
       "updated_confidence": "high",
       "status": "mechanism_discriminating",
-      "max_margin_delta": -3.65,
-      "rationale": "Discriminating tool [dose_response] at Layer 12 produced a significant logprob margin shift (margin_delta=-3.65, effect_size=-0.91), providing strong evidence separating representation vs routing mechanism."
+      "max_margin_delta": -2.7188,
+      "rationale": "Discriminating tool [dose_response] at Layer 12 produced a significant logprob margin shift (margin_delta=-2.72, effect_size=-0.68), providing strong evidence separating representation vs routing mechanism."
     },
     {
       "hypothesis_id": 2,

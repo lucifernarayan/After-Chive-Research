@@ -14,9 +14,10 @@ from schemas.investigation import (
     HypothesisEvidence,
     InvestigationBudget
 )
-from interventions.sandbox import InvestigationSandbox
+from interventions.sandbox import InvestigationSandbox, BudgetExhaustedError
 from target.gemma import GemmaTargetInterface
 from agents.causal_investigator import CausalInvestigatorAgent
+
 
 
 class TestCausalInvestigator(unittest.TestCase):
@@ -359,7 +360,149 @@ class TestCausalInvestigator(unittest.TestCase):
         self.assertIn("case_qualified", res)
         self.assertTrue(res["case_qualified"])
 
+    def test_budget_cap_25_default_and_enforcement(self):
+        """Verify InvestigationBudget defaults to max_experiments=25 and raises BudgetExhaustedError at cap."""
+        budget = InvestigationBudget()
+        self.assertEqual(budget.max_experiments, 25)
+
+        target = GemmaTargetInterface(mock=True)
+        sandbox = InvestigationSandbox(
+            target_model=target,
+            budget=InvestigationBudget(max_experiments=2, max_target_calls=10, max_interventions=10),
+            case_id="case_budget_cap"
+        )
+        sandbox.run_target("Test prompt 1")
+        sandbox.run_target("Test prompt 2")
+        self.assertTrue(sandbox.budget.is_exhausted())
+        with self.assertRaises(BudgetExhaustedError):
+            sandbox.run_target("Test prompt 3")
+
+    def test_attribution_head_mlp_primitives(self):
+        """Verify attribution, patch_head, ablate_head, patch_mlp, ablate_mlp, random_control tools."""
+        target = GemmaTargetInterface(mock=True)
+        sandbox = InvestigationSandbox(
+            target_model=target,
+            budget=InvestigationBudget(max_experiments=20, max_target_calls=50, max_interventions=30),
+            case_id="case_new_primitives"
+        )
+
+        # 1. Attribution
+        res_attr = sandbox.attribution("What is the capital of France?", candidate_tokens=["Paris", "Rome"])
+        self.assertEqual(res_attr.experiment_type, "attribution")
+        self.assertIsNotNone(res_attr.attribution_scores)
+        self.assertGreater(len(res_attr.attribution_scores), 0)
+
+        # 2. Patch Head
+        res_ph = sandbox.patch_head(
+            source_prompt="The capital of France is Paris.",
+            target_prompt="What is the capital of Italy?",
+            layer_idx=12, head_idx=2, source_pos=2, target_pos=2,
+            candidate_tokens=["Rome", "Paris"]
+        )
+        self.assertEqual(res_ph.experiment_type, "patch_head")
+        self.assertEqual(res_ph.head_idx, 2)
+
+        # 3. Ablate Head
+        res_ah = sandbox.ablate_head(
+            prompt="What is the capital of Italy?",
+            layer_idx=12, head_idx=4, position_idx=2,
+            candidate_tokens=["Rome", "Paris"]
+        )
+        self.assertEqual(res_ah.experiment_type, "ablate_head")
+        self.assertEqual(res_ah.head_idx, 4)
+
+        # 4. Patch MLP
+        res_pm = sandbox.patch_mlp(
+            source_prompt="The capital of France is Paris.",
+            target_prompt="What is the capital of Italy?",
+            layer_idx=14, source_pos=2, target_pos=2,
+            candidate_tokens=["Rome", "Paris"]
+        )
+        self.assertEqual(res_pm.experiment_type, "patch_mlp")
+
+        # 5. Ablate MLP
+        res_am = sandbox.ablate_mlp(
+            prompt="What is the capital of Italy?",
+            layer_idx=14, position_idx=2,
+            candidate_tokens=["Rome", "Paris"]
+        )
+        self.assertEqual(res_am.experiment_type, "ablate_mlp")
+
+        # 6. Random Control
+        res_rc = sandbox.random_control(
+            source_prompt="Random source text",
+            target_prompt="What is the capital of Italy?",
+            layer_idx=12, candidate_tokens=["Rome", "Paris"]
+        )
+        self.assertEqual(res_rc.experiment_type, "random_control")
+        self.assertEqual(res_rc.control_type, "random")
+
+    def test_sandbox_freeze_enforcement(self):
+        """Verify sandbox enters state BLIND_PREDICTION on freeze() and rejects subsequent tool calls."""
+        target = GemmaTargetInterface(mock=True)
+        sandbox = InvestigationSandbox(target_model=target, case_id="case_freeze")
+        self.assertEqual(sandbox.record.state, "INVESTIGATION")
+
+        sandbox.freeze(stopping_reason="hypotheses_resolved")
+        self.assertTrue(sandbox.is_frozen)
+        self.assertEqual(sandbox.record.state, "BLIND_PREDICTION")
+        self.assertEqual(sandbox.record.stopping_reason, "hypotheses_resolved")
+
+        with self.assertRaises(RuntimeError) as ctx:
+            sandbox.run_target("Test prompt after freeze")
+        self.assertIn("frozen", str(ctx.exception).lower())
+
+    def test_synthetic_capital_patching_integration(self):
+        """Synthetic integration test: run Agent #2 adaptive loop end-to-end and verify prediction."""
+        agent = CausalInvestigatorAgent(mock=True)
+        target = GemmaTargetInterface(mock=True)
+        sandbox = InvestigationSandbox(target_model=target, case_id=self.sample_case.case_id)
+
+        record = agent.investigate(self.sample_case, self.hypotheses, sandbox)
+        self.assertTrue(sandbox.is_frozen)
+        self.assertEqual(record.state, "BLIND_PREDICTION")
+        self.assertIsNotNone(record.stopping_reason)
+
+        pred = agent.generate_blind_prediction(self.sample_case, self.hypotheses, sandbox)
+        self.assertEqual(pred.case_id, self.sample_case.case_id)
+        self.assertGreaterEqual(pred.confidence, 0.5)
+
+    def test_epistemic_security_isolation(self):
+        """Security Test: verify no expected_behavior leakage and post-freeze isolation."""
+        agent = CausalInvestigatorAgent(mock=True)
+        target = GemmaTargetInterface(mock=True)
+        sandbox = InvestigationSandbox(target_model=target, case_id=self.sample_case.case_id)
+
+        record = agent.investigate(self.sample_case, self.hypotheses, sandbox)
+        pred = agent.generate_blind_prediction(self.sample_case, self.hypotheses, sandbox)
+
+        # Sandbox is frozen
+        with self.assertRaises(RuntimeError):
+            sandbox.patch_activation("src", "tgt", layer_idx=10, source_pos=0, target_pos=0)
+
+    def test_adaptive_experiment_selection(self):
+        """Adaptive Selection Test: verify Experiment 1 result updates hypothesis evidence state for Experiment 2."""
+        agent = CausalInvestigatorAgent(mock=True)
+        target = GemmaTargetInterface(mock=True)
+        sandbox = InvestigationSandbox(target_model=target, case_id="case_adaptive")
+
+        # Run single discriminating experiment
+        res_dose = sandbox.dose_response(
+            source_prompt="Capital of France is",
+            target_prompt="Capital of Italy is",
+            layer_idx=12, candidate_tokens=["Rome", "Paris"]
+        )
+
+        ev = HypothesisEvidence(
+            hypothesis_id=1, claim="Representation shift", mechanism_guess="Residual vector override",
+            prior_confidence="high", status="unresolved", updated_confidence="high", rationale="Init"
+        )
+        agent._update_evidence(ev, res_dose)
+        self.assertEqual(ev.status, "mechanism_discriminating")
+        self.assertEqual(ev.evidence_strength, "strong")
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
